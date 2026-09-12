@@ -2742,3 +2742,343 @@ body.light-mode .theme-toggle .toggle-thumb { background: #f59e0b; transform: tr
   .qty-btn { width: 34px; height: 34px; }
   .nav a { padding: 14px 16px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   MOBİL HAMBURGER MENÜ & DRAWER
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Masaüstünde hamburger gizli */
+.mobile-header { display: none; }
+.drawer-overlay { display: none; }
+
+@media (max-width: 768px) {
+
+  /* ─── MASAÜSTÜ HEADER GİZLE ─────────────────────────────────────────────── */
+  .header { display: none !important; }
+  .nav   { display: none !important; }
+  .topbar { display: none !important; }
+
+  /* ─── MOBİL HEADER ──────────────────────────────────────────────────────── */
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    height: 56px;
+    background: rgba(6,6,8,0.97);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 300;
+  }
+  .mobile-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, var(--red), var(--blue-mid), transparent);
+    opacity: .5;
+  }
+
+  /* Hamburger butonu */
+  .hamburger-btn {
+    width: 40px; height: 40px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 5px; cursor: pointer;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    transition: var(--trans);
+    flex-shrink: 0;
+  }
+  .hamburger-btn:hover { border-color: var(--red); }
+  .hamburger-btn.active .hb-line:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .hamburger-btn.active .hb-line:nth-child(2) { opacity: 0; transform: scaleX(0); }
+  .hamburger-btn.active .hb-line:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+  .hb-line {
+    width: 20px; height: 2px;
+    background: var(--text);
+    border-radius: 2px;
+    transition: all .3s cubic-bezier(.4,0,.2,1);
+    transform-origin: center;
+  }
+
+  /* Orta logo */
+  .mobile-logo {
+    display: flex; align-items: center; gap: 8px;
+    text-decoration: none; flex: 1; justify-content: center;
+  }
+  .mobile-logo svg { filter: drop-shadow(0 0 8px rgba(245,166,35,.6)); }
+  .mobile-logo-text {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px; font-weight: 700;
+    color: var(--white); text-transform: uppercase; letter-spacing: 1px;
+    line-height: 1;
+  }
+  .mobile-logo-text span { color: var(--red); }
+
+  /* Sağ aksiyonlar */
+  .mobile-actions {
+    display: flex; align-items: center; gap: 6px;
+    flex-shrink: 0;
+  }
+  .mobile-action-btn {
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 9px; cursor: pointer; font-size: 18px;
+    transition: var(--trans); text-decoration: none;
+    position: relative;
+  }
+  .mobile-action-btn:hover { border-color: var(--red); }
+  .mobile-cart-badge {
+    position: absolute; top: -5px; right: -5px;
+    background: var(--red); color: #fff;
+    font-size: 9px; font-weight: 800;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    display: none; align-items: center; justify-content: center;
+    border: 1.5px solid var(--bg);
+    font-family: 'Rajdhani', sans-serif;
+  }
+
+  /* Mobil arama overlay */
+  .mobile-search-overlay {
+    display: none;
+    position: fixed; top: 56px; left: 0; right: 0;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 14px;
+    z-index: 299;
+    animation: fadeIn .2s ease;
+  }
+  .mobile-search-overlay.active { display: block; }
+  .mobile-search-inner {
+    display: flex; gap: 0;
+    background: var(--bg3);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .mobile-search-inner input {
+    flex: 1; padding: 11px 14px;
+    background: transparent; border: none;
+    color: var(--text); font-size: 14px;
+    outline: none; font-family: inherit;
+  }
+  .mobile-search-inner input::placeholder { color: var(--muted); }
+  .mobile-search-inner button {
+    background: var(--red); color: #fff;
+    padding: 11px 16px; font-size: 16px;
+    border: none; cursor: pointer;
+  }
+
+  /* ─── DRAWER (YAN MENÜ) ─────────────────────────────────────────────────── */
+  .drawer-overlay {
+    display: block;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 400;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s ease;
+  }
+  .drawer-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .drawer {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: min(300px, 85vw);
+    background: linear-gradient(180deg, #0a0b10 0%, #060608 100%);
+    border-right: 1px solid var(--border);
+    z-index: 401;
+    transform: translateX(-100%);
+    transition: transform .35s cubic-bezier(.4,0,.2,1);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+  .drawer.active { transform: translateX(0); }
+
+  /* Drawer header */
+  .drawer-header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, rgba(230,57,70,0.06), rgba(37,99,235,0.04));
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .drawer-brand {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 16px; font-weight: 700;
+    color: var(--white); text-transform: uppercase; letter-spacing: 1px;
+  }
+  .drawer-brand span { color: var(--red); }
+  .drawer-close {
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 8px; cursor: pointer;
+    font-size: 16px; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--trans);
+  }
+  .drawer-close:hover { color: var(--red); border-color: var(--red); }
+
+  /* Tema toggle */
+  .drawer-theme {
+    margin: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px;
+  }
+  .drawer-theme-label {
+    font-size: 13px; color: var(--muted); font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* Auth butonlar */
+  .drawer-auth {
+    margin: 0 16px 14px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .drawer-auth-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 13px 16px;
+    border-radius: 10px; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: var(--trans);
+    text-decoration: none; font-family: inherit;
+  }
+  .drawer-auth-btn.primary {
+    background: linear-gradient(135deg, var(--red), var(--red-dark));
+    color: #fff;
+    box-shadow: 0 4px 16px var(--red-glow);
+  }
+  .drawer-auth-btn.secondary {
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .drawer-auth-btn.secondary:hover { border-color: var(--blue-mid); color: var(--white); }
+  .drawer-user-info {
+    margin: 0 16px 14px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .drawer-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--red), var(--blue-mid));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; font-weight: 800; color: #fff;
+    font-family: 'Rajdhani', sans-serif; flex-shrink: 0;
+  }
+  .drawer-user-name { font-size: 14px; font-weight: 700; color: var(--white); }
+  .drawer-user-email { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* Divider */
+  .drawer-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 4px 16px 10px;
+  }
+
+  /* Drawer nav linkleri */
+  .drawer-section-title {
+    padding: 8px 20px 6px;
+    font-size: 9px; font-weight: 700;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px;
+  }
+  .drawer-nav-link {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 20px;
+    color: var(--muted); font-size: 14px; font-weight: 500;
+    text-decoration: none; transition: var(--trans);
+    border-left: 2px solid transparent;
+  }
+  .drawer-nav-link:hover, .drawer-nav-link.active {
+    color: var(--white);
+    background: rgba(255,255,255,0.03);
+    border-left-color: var(--red);
+    padding-left: 24px;
+  }
+  .drawer-nav-link .link-icon { font-size: 18px; width: 22px; text-align: center; }
+  .drawer-nav-link .link-badge {
+    margin-left: auto; background: var(--red);
+    color: #fff; font-size: 10px; font-weight: 800;
+    padding: 1px 7px; border-radius: 50px;
+    font-family: 'Rajdhani', sans-serif;
+  }
+
+  /* Drawer footer */
+  .drawer-footer {
+    margin-top: auto;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .drawer-logout {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; padding: 11px 16px;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 10px; color: #f87171;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: var(--trans); font-family: inherit;
+  }
+  .drawer-logout:hover { background: rgba(239,68,68,0.15); }
+
+  /* ─── MOBİL SLIDER DÜZELTMESİ ───────────────────────────────────────────── */
+  .product-slider-section { margin: 12px 0 20px; border-radius: 12px; }
+  .slider-wrapper { min-height: 220px; border-radius: 12px; }
+  .slider-slide { min-height: 220px; }
+  .slider-slide-img { width: 100%; height: 220px; object-fit: cover; flex-shrink: 0; }
+  .slider-slide-no-img { display: none; }
+  .slider-slide::after {
+    background: linear-gradient(0deg, rgba(6,6,8,0.97) 0%, rgba(6,6,8,0.6) 45%, rgba(6,6,8,0.1) 100%);
+  }
+  .slider-slide-info {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 14px 16px; z-index: 2;
+  }
+  .slide-cat { font-size: 9px; padding: 2px 8px; margin-bottom: 4px; display: inline-block; }
+  .slider-slide-info h2 { font-size: 15px; margin-bottom: 0; }
+  .slide-desc { display: none; }
+  .slide-price-box { margin-bottom: 4px; }
+  .slide-price { font-size: 18px; }
+  .slide-old-price { display: none; }
+  .slide-cta { padding: 7px 14px; font-size: 11px; margin-top: 6px; display: inline-flex; }
+  .slider-btn { width: 32px; height: 32px; font-size: 16px; }
+
+  /* ─── SECTION HEADER MOBİL ───────────────────────────────────────────────── */
+  .section-header { margin: 0 0 12px; padding-bottom: 10px; }
+  .section-header h2 { font-size: 15px; }
+
+  /* ─── ÜRÜN KARTLARI MOBİL ────────────────────────────────────────────────── */
+  .products-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px; }
+  .product-card .img-wrap { aspect-ratio: 1/1; }
+  .product-card .card-body { padding: 8px 10px 10px; }
+  .product-card .category-tag { font-size: 9px; margin-bottom: 4px; }
+  .product-card h3 { font-size: 12px; margin-bottom: 7px; -webkit-line-clamp: 2; }
+  .product-card .price { font-size: 15px; }
+  .product-card .price-usd { font-size: 10px; }
+  .product-card .old-price { font-size: 10px; }
+  .product-card .stock-badge { font-size: 9px; padding: 2px 5px; margin-top: 4px; }
+  .card-actions { margin-top: 6px; }
+  .card-cart-btn { font-size: 10px; padding: 7px 6px; gap: 3px; border-radius: 6px; }
+  .product-card:hover { transform: translateY(-3px); }
+
+  /* main içerik padding */
+  main .container { padding: 0 12px; }
+}
+
+/* ─── ÇOK KÜÇÜK EKRAN (max 360px) ───────────────────────────────────────────── */
+@media (max-width: 360px) {
+  .products-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .product-card h3 { font-size: 11px; }
+  .product-card .price { font-size: 14px; }
+  .card-cart-btn { font-size: 9px; padding: 6px 4px; }
+  .mobile-logo-text { font-size: 13px; }
+}

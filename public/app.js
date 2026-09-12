@@ -163,6 +163,7 @@ async function addToCart(productId, quantity = 1) {
   }
   if (data.success) {
     updateCartBadge(data.count);
+    if (window.updateMobileCartBadge) window.updateMobileCartBadge(data.count);
     showToast('Ürün sepete eklendi! 🛒', 'success');
     return data;
   } else {
