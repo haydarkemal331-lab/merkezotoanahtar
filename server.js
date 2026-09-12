@@ -44,6 +44,9 @@ passport.deserializeUser((id, done) => {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Railway ve proxy arkasında çalışmak için
+app.set('trust proxy', 1);
+
 const uploadDir = path.join(__dirname, 'public', 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -73,8 +76,8 @@ app.use(session({
   saveUninitialized: false,
   cookie: { 
     maxAge: 24 * 60 * 60 * 1000,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    secure: false,
+    sameSite: 'lax'
   }
 }));
 app.use(passport.initialize());
