@@ -2494,3 +2494,251 @@ body.light-mode .theme-toggle .toggle-thumb { background: #f59e0b; transform: tr
   box-shadow: 0 2px 8px var(--red-glow);
   animation: pulse 2s ease infinite;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   TAM MOBİL UYUMLULUK — Kapsamlı Responsive
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── GENEL MOBİL AYARLAR ────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  html { font-size: 15px; }
+  .container { padding: 0 14px; }
+
+  /* Topbar */
+  .topbar .container { flex-direction: column; gap: 4px; font-size: 11px; text-align: center; }
+  .topbar-info { gap: 10px; justify-content: center; }
+  .topbar-clock { font-size: 13px; }
+
+  /* HEADER */
+  .header { padding: 10px 0; }
+  .header .container {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .logo { min-width: auto; }
+  .logo-text h1 { font-size: 15px; }
+  .logo-text p { font-size: 9px; }
+  .logo-icon svg { width: 28px; height: 28px; }
+
+  /* Search bar tam genişlik */
+  .search-bar {
+    order: 3;
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+  .search-bar input { font-size: 13px; padding: 10px 14px; }
+  .search-bar button { padding: 10px 16px; }
+
+  /* Header actions */
+  .header-actions {
+    margin-left: auto;
+    gap: 6px;
+  }
+  .header-auth-btn { padding: 7px 10px; font-size: 12px; }
+  .header-auth-btn span:first-child { display: none; }
+  .header-user-btn { padding: 5px 10px 5px 5px; }
+  .header-user-info { display: none; }
+  .header-cart-btn { width: 36px; height: 36px; }
+
+  /* NAV */
+  .nav .container { gap: 0; }
+  .nav a { padding: 11px 13px; font-size: 12px; gap: 5px; }
+  .nav a span { font-size: 13px; }
+
+  /* FEATURES */
+  .features-strip { display: none; }
+  .footer-features { grid-template-columns: 1fr 1fr; gap: 16px; padding-bottom: 28px; }
+  .footer-feature-item { padding: 0; }
+
+  /* SLIDER */
+  .product-slider-section { margin: 14px 0 24px; border-radius: 10px; }
+  .slider-wrapper { min-height: 200px; border-radius: 10px; }
+  .slider-slide { min-height: 200px; flex-direction: column; }
+  .slider-slide-img { width: 100%; height: 200px; }
+  .slider-slide-no-img { display: none; }
+  .slider-slide::after {
+    background: linear-gradient(0deg, rgba(6,6,8,0.95) 0%, rgba(6,6,8,0.5) 50%, transparent 100%);
+  }
+  .slider-slide-info {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 16px 18px;
+    background: none;
+    z-index: 2;
+  }
+  .slide-cat { font-size: 9px; padding: 2px 8px; margin-bottom: 6px; }
+  .slider-slide-info h2 { font-size: 16px; margin-bottom: 4px; }
+  .slide-desc { display: none; }
+  .slide-price { font-size: 20px; }
+  .slide-old-price { font-size: 12px; margin-bottom: 8px; }
+  .slide-cta { padding: 8px 16px; font-size: 12px; margin-top: 8px; }
+  .slider-btn { width: 34px; height: 34px; font-size: 18px; }
+  .slider-prev { left: 8px; }
+  .slider-next { right: 8px; }
+  .slider-dots { bottom: 10px; }
+  .slider-dot { width: 6px; height: 6px; }
+  .slider-dot.active { width: 18px; }
+
+  /* SECTION HEADER */
+  .section-header { margin: 0 0 14px; }
+  .section-header h2 { font-size: 16px; }
+
+  /* ÜRÜN GRİD */
+  .products-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .product-card .card-body { padding: 10px; }
+  .product-card h3 { font-size: 12px; margin-bottom: 8px; }
+  .product-card .price { font-size: 16px; }
+  .product-card .price-usd { font-size: 10px; }
+  .product-card .category-tag { font-size: 9px; }
+  .product-card .stock-badge { font-size: 10px; padding: 2px 6px; }
+  .card-cart-btn { font-size: 11px; padding: 7px 8px; }
+
+  /* ÜRÜN DETAY */
+  .product-page-hero { border-radius: 10px; }
+  .product-hero-top { grid-template-columns: 1fr; }
+  .product-gallery { min-height: 260px; }
+  .product-gallery-main { min-height: 260px; object-fit: cover; }
+  .product-info-panel { padding: 20px 18px; border-left: none; border-top: 1px solid var(--border); }
+  .product-title { font-size: 20px; }
+  .product-price-main { font-size: 30px; }
+  .product-info-bottom { grid-template-columns: 1fr 1fr; }
+  .product-info-tag:last-child { grid-column: 1/-1; border-top: 1px solid var(--border); }
+  .product-cart-btn { padding: 13px 16px; font-size: 14px; }
+
+  /* KATEGORİ SAYFA */
+  .category-page-layout { flex-direction: column; gap: 16px; margin: 10px 0 32px; }
+  .cat-sidebar { width: 100%; position: relative; top: 0; }
+  .sidebar-box { border-radius: 8px; }
+  .cat-content-header h1 { font-size: 18px; }
+  .cat-content-header select { font-size: 12px; padding: 7px 10px; }
+
+  /* BREADCRUMB */
+  .breadcrumb { font-size: 12px; padding: 10px 0; }
+
+  /* CART */
+  .cart-layout { grid-template-columns: 1fr; gap: 16px; }
+  .cart-summary { position: relative; top: 0; }
+  .cart-item { padding: 14px 14px; gap: 12px; }
+  .cart-item-img { width: 60px; height: 60px; }
+  .cart-item-name { font-size: 13px; }
+  .cart-item-price .price { font-size: 16px; }
+
+  /* CHECKOUT */
+  .checkout-layout { grid-template-columns: 1fr; }
+  .checkout-steps { gap: 0; }
+  .step { font-size: 12px; }
+  .step-num { width: 24px; height: 24px; font-size: 11px; }
+  .form-grid2 { grid-template-columns: 1fr; }
+  .payment-methods { grid-template-columns: 1fr; }
+
+  /* ABOUT */
+  .about-card { grid-template-columns: 1fr; }
+  .about-img-wrap { height: 220px; }
+  .about-text { padding: 22px 20px; }
+  .about-title { font-size: 22px; }
+  .about-body { font-size: 14px; }
+
+  /* POSTS */
+  .posts-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .post-card-title { font-size: 13px; }
+
+  /* POST DETAY */
+  .post-detail-body { padding: 22px 18px; }
+  .post-detail-title { font-size: 22px; }
+  .post-detail-footer { flex-direction: column; }
+
+  /* FOOTER */
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 24px; }
+  .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
+  .footer-bottom > div { justify-content: center; flex-wrap: wrap; }
+
+  /* PAGINATION */
+  .pagination { gap: 6px; }
+  .page-btn { padding: 7px 12px; font-size: 12px; }
+
+  /* HESABIM */
+  .account-layout { flex-direction: column; gap: 16px; }
+  .account-sidebar { width: 100%; position: relative; top: 0; }
+  .account-nav a { padding: 11px 16px; font-size: 13px; }
+
+  /* AUTH SAYFALAR */
+  .auth-card { border-radius: 12px; }
+  .login-card { padding: 36px 24px; }
+  .auth-body, .auth-header, .auth-footer { padding-left: 20px; padding-right: 20px; }
+  .form-row { grid-template-columns: 1fr; }
+
+  /* MODAL */
+  .modal { padding: 22px 18px; border-radius: 12px; max-height: 85vh; }
+  .modal-header h3 { font-size: 15px; }
+
+  /* TOAST */
+  .toast-container { top: 10px; right: 10px; left: 10px; }
+  .toast { min-width: auto; font-size: 13px; }
+
+  /* ORDER SUCCESS */
+  .success-card { padding: 36px 24px; }
+  .success-title { font-size: 22px; }
+  .success-icon { font-size: 56px; }
+}
+
+/* ─── KÜÇÜK MOBİL (max 480px) ────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .products-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .product-card .card-body { padding: 8px; }
+  .product-card h3 { font-size: 11px; }
+  .product-card .price { font-size: 15px; }
+  .card-cart-btn { font-size: 10px; padding: 6px 6px; gap: 3px; }
+
+  .posts-grid { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr; }
+  .footer-features { grid-template-columns: 1fr 1fr; }
+
+  .slider-slide-info h2 { font-size: 14px; }
+  .slide-price { font-size: 17px; }
+
+  .header-auth-btn { padding: 6px 8px; font-size: 11px; }
+
+  .nav a { padding: 10px 10px; font-size: 11px; }
+
+  .product-info-bottom { grid-template-columns: 1fr; }
+  .product-info-tag { border-right: none; border-bottom: 1px solid var(--border); }
+  .product-info-tag:last-child { border-bottom: none; }
+
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .dash-summary { grid-template-columns: 1fr; }
+}
+
+/* ─── TABLET (768px - 1024px) ────────────────────────────────────────────────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .products-grid { grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .posts-grid { grid-template-columns: repeat(2, 1fr); }
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 28px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .product-hero-top { grid-template-columns: 1fr 1fr; }
+  .slider-slide-info h2 { font-size: 24px; }
+  .slide-price { font-size: 28px; }
+
+  .header .container { flex-wrap: wrap; }
+  .search-bar { max-width: 420px; }
+}
+
+/* ─── MOBİL HAMBURGER MENÜ ───────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .nav .container {
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .nav .container::-webkit-scrollbar { display: none; }
+  .nav a { white-space: nowrap; flex-shrink: 0; }
+}
+
+/* ─── DOKUNMATIK İYİLEŞTİRMELER ─────────────────────────────────────────────── */
+@media (hover: none) and (pointer: coarse) {
+  .product-card:hover { transform: none; }
+  .btn-red:hover { transform: none; }
+  .wa-buy-btn:hover { transform: none; }
+  .product-cart-btn:hover { transform: none; }
+  .card-cart-btn { padding: 10px; } /* Daha büyük dokunma alanı */
+  .qty-btn { width: 34px; height: 34px; }
+  .nav a { padding: 14px 16px; }
+}

@@ -838,16 +838,9 @@ if (PAGE === 'product') {
                 <span style="font-size:20px;">🛒</span>
                 <div>
                   <div>Sepete Ekle</div>
-                  <span class="btn-sub">Giriş yaparak satın al</span>
+                  <span class="btn-sub">Giriş yaparak güvenli satın al</span>
                 </div>
               </button>
-              <a href="${waUrl}" class="product-wa-btn" target="_blank">
-                <span style="font-size:28px;">💬</span>
-                <div>
-                  <div>WhatsApp ile Bilgi Al</div>
-                  <span class="btn-sub">Hesap açmadan sormak için</span>
-                </div>
-              </a>
             </div>
           </div>
         </div>
