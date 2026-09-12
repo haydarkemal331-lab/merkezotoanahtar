@@ -11,9 +11,9 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const db = require('./database');
 
 // ─── GOOGLE OAUTH CONFIG ──────────────────────────────────────────────────────
-const GOOGLE_CLIENT_ID     = '91883857457-ujmkdv98c33savgprkmn2ukkc30jk31k.apps.googleusercontent.com';
-const GOOGLE_CLIENT_SECRET = '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';
-const GOOGLE_CALLBACK_URL  = 'http://localhost:3000/auth/google/callback';
+const GOOGLE_CLIENT_ID     = process.env.GOOGLE_CLIENT_ID     || '91883857457-ujmkdv98c33savgprkmn2ukkc30jk31k.apps.googleusercontent.com';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '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';
+const GOOGLE_CALLBACK_URL  = process.env.GOOGLE_CALLBACK_URL  || 'http://localhost:3000/auth/google/callback';
 
 passport.use(new GoogleStrategy({
   clientID:     GOOGLE_CLIENT_ID,
