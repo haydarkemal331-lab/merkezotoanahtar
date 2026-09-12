@@ -1,0 +1,5 @@
+node_modules/
+db.json
+public/invoices/
+public/uploads/
+*.log

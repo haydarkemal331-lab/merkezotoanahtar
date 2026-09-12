@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title id="pageTitle">Kategori - Merkez Oto Anahtar</title>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="container">
+    <div class="topbar-info">
+      <span class="topbar-clock">🕐 <span id="topClock">--:--:--</span></span>
+      <span class="topbar-rate">
+        <span class="rate-label">💵 USD/TRY:</span>
+        <span class="rate-val" id="topUsd">--</span>
+        <span class="rate-change" id="topUsdChange"></span>
+      </span>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <a href="https://wa.me/905386470132" target="_blank" style="color:#25D366;font-weight:700;font-size:12px;">💬 WhatsApp</a>
+      <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle" title="Gündüz/Gece modu">
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        <span id="themeLabel">🌙 Gece</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="container">
+    <a class="logo" href="/">
+      <div class="logo-icon"><svg width="38" height="38" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="20" cy="20" r="14" stroke="#f5a623" stroke-width="5" fill="none"/>
+  <circle cx="20" cy="20" r="6" fill="#f5a623"/>
+  <rect x="32" y="17" width="24" height="6" rx="3" fill="#f5a623"/>
+  <rect x="50" y="23" width="6" height="9" rx="2.5" fill="#f5a623"/>
+  <rect x="41" y="23" width="5" height="7" rx="2" fill="#f5a623"/>
+</svg></div>
+      <div class="logo-text">
+        <h1>MERKEZ <span>OTO</span> ANAHTAR</h1>
+        <p>Anahtar & Kumanda Uzmanı</p>
+      </div>
+    </a>
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Ürün ara..."/>
+      <button onclick="doSearchCat()">🔍</button>
+    </div>
+    <div class="header-actions" id="headerActions"></div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="container">
+    <a href="/"><span>🏠</span> Ana Sayfa</a>
+    <div id="navCategories" style="display:contents"></div>
+  </div>
+</nav>
+
+<main>
+  <div class="container">
+
+    <!-- BREADCRUMB -->
+    <div class="breadcrumb">
+      <a href="/">Ana Sayfa</a>
+      <span>›</span>
+      <span id="breadCatName">Kategori</span>
+    </div>
+
+    <div class="category-page-layout">
+
+      <!-- SOL SIDEBAR -->
+      <aside class="cat-sidebar">
+
+        <!-- Tüm Kategoriler -->
+        <div class="sidebar-box">
+          <div class="sidebar-box-title" id="sidebarBoxTitle">Gruplar <button class="sidebar-toggle" onclick="toggleBox(this)">−</button></div>
+          <div class="sidebar-box-body" id="sidebarCats">
+            <!-- JS ile doldurulur -->
+          </div>
+        </div>
+
+        <!-- Fiyat Aralığı -->
+        <div class="sidebar-box">
+          <div class="sidebar-box-title">Fiyat Aralığı <button class="sidebar-toggle" onclick="toggleBox(this)">−</button></div>
+          <div class="sidebar-box-body">
+            <div class="price-range">
+              <input type="number" id="minPrice" placeholder="Min ₺" min="0"/>
+              <span>—</span>
+              <input type="number" id="maxPrice" placeholder="Max ₺" min="0"/>
+            </div>
+            <button class="price-filter-btn" onclick="applyPriceFilter()">Uygula 🔍</button>
+          </div>
+        </div>
+
+        <!-- Stok Durumu -->
+        <div class="sidebar-box">
+          <div class="sidebar-box-title">Stok Durumu <button class="sidebar-toggle" onclick="toggleBox(this)">−</button></div>
+          <div class="sidebar-box-body">
+            <label class="sidebar-check">
+              <input type="checkbox" id="onlyInStock" onchange="applyFilters()"/>
+              <span>Sadece stokta olanlar</span>
+            </label>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- SAĞ ÜRÜN LİSTESİ -->
+      <div class="cat-content">
+        <div class="cat-content-header">
+          <h1 id="catTitle">Yükleniyor...</h1>
+          <span id="catProductCount" style="color:#888;font-size:13px;"></span>
+          <select id="sortSelect" onchange="applyFilters()" style="margin-left:auto;padding:7px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none;">
+            <option value="random">Varsayılan</option>
+            <option value="price_asc">Fiyat: Düşükten Yükseğe</option>
+            <option value="price_desc">Fiyat: Yüksekten Düşüğe</option>
+            <option value="newest">En Yeni</option>
+          </select>
+        </div>
+        <div id="catProductsGrid" class="products-grid">
+          <div class="loading"><div class="spinner"></div><p>Yükleniyor...</p></div>
+        </div>
+        <div id="catPagination" class="pagination"></div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <h4>🔑 Merkez Oto Anahtar</h4>
+        <p>Oto anahtar, kumanda ve kilit sistemi konusunda uzman ekibimizle hizmetinizdeyiz.</p>
+      </div>
+      <div>
+        <h4>Kategoriler</h4>
+        <ul id="footerCategories"></ul>
+      </div>
+      <div>
+        <h4>Hizmetler</h4>
+        <ul>
+          <li><a href="#">Anahtar Kopyalama</a></li>
+          <li><a href="#">Kumanda Programlama</a></li>
+          <li><a href="#">Acil Çilingir</a></li>
+        </ul>
+      </div>
+      <div class="footer-contact">
+        <h4>İletişim</h4>
+        <p><span class="ic">💬</span> <a href="https://wa.me/905386470132" target="_blank" style="color:#25D366;">WhatsApp ile Yazın</a></p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2024 Merkez Oto Anahtar. Tüm hakları saklıdır.</span>
+    </div>
+  </div>
+</footer>
+
+<div class="toast-container" id="toastContainer"></div>
+<script src="/app.js"></script>
+</body>
+</html>

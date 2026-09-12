@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Girişi - Merkez Oto Anahtar</title>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body class="admin-login-page">
+
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="icon">🔑</div>
+      <h2>Merkez Oto Anahtar</h2>
+      <p>Yönetim Paneli Girişi</p>
+    </div>
+
+    <form id="loginForm" onsubmit="doLogin(event)">
+      <div class="form-group">
+        <label for="username">Kullanıcı Adı</label>
+        <input type="text" id="username" placeholder="admin" autocomplete="username" required/>
+      </div>
+      <div class="form-group">
+        <label for="password">Şifre</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" required/>
+      </div>
+      <div id="loginError" style="color:#e63946; font-size:13px; margin-bottom:12px; display:none;"></div>
+      <button type="submit" class="btn-red" id="loginBtn">Giriş Yap</button>
+    </form>
+
+    <div style="text-align:center; margin-top:20px;">
+      <a href="/" style="font-size:13px; color:#888;">← Siteye Dön</a>
+    </div>
+  </div>
+
+<script>
+  // Zaten giriş yapılmışsa panele yönlendir
+  fetch('/api/admin/check')
+    .then(r => r.json())
+    .then(d => { if (d.loggedIn) window.location.href = '/admin/panel'; });
+
+  async function doLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    const errEl = document.getElementById('loginError');
+    btn.textContent = 'Giriş yapılıyor...';
+    btn.disabled = true;
+    errEl.style.display = 'none';
+
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: document.getElementById('username').value,
+        password: document.getElementById('password').value
+      })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      window.location.href = '/admin/panel';
+    } else {
+      errEl.textContent = data.error || 'Giriş başarısız.';
+      errEl.style.display = 'block';
+      btn.textContent = 'Giriş Yap';
+      btn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>

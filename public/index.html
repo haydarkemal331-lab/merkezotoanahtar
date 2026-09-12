@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Merkez Oto Anahtar - Anahtar & Kumanda Merkezi</title>
+  <link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="container">
+    <div class="topbar-info">
+      <span class="topbar-clock">🕐 <span id="topClock">--:--:--</span></span>
+      <span class="topbar-rate">
+        <span class="rate-label">💵 USD/TRY:</span>
+        <span class="rate-val" id="topUsd">--</span>
+        <span class="rate-change" id="topUsdChange"></span>
+      </span>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <a href="https://wa.me/905386470132" target="_blank" style="color:#25D366;font-weight:700;font-size:12px;">💬 WhatsApp</a>
+      <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle" title="Gündüz/Gece modu">
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        <span id="themeLabel">🌙 Gece</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="container">
+    <a class="logo" href="/">
+      <div class="logo-icon"><svg width="38" height="38" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="20" cy="20" r="14" stroke="#f5a623" stroke-width="5" fill="none"/>
+  <circle cx="20" cy="20" r="6" fill="#f5a623"/>
+  <rect x="32" y="17" width="24" height="6" rx="3" fill="#f5a623"/>
+  <rect x="50" y="23" width="6" height="9" rx="2.5" fill="#f5a623"/>
+  <rect x="41" y="23" width="5" height="7" rx="2" fill="#f5a623"/>
+</svg></div>
+      <div class="logo-text">
+        <h1>MERKEZ <span>OTO</span> ANAHTAR</h1>
+        <p>Anahtar & Kumanda Uzmanı</p>
+      </div>
+    </a>
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Ürün ara... (BMW anahtar, Fiat kumanda...)"/>
+      <button onclick="doSearch()">🔍</button>
+    </div>
+    <div class="header-actions" id="headerActions"></div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="container">
+    <a href="/" class="active"><span>🏠</span> Ana Sayfa</a>
+    <div id="navCategories" style="display:contents"></div>
+  </div>
+</nav>
+
+<main>
+  <div class="container">
+
+    <!-- SLIDER -->
+    <div class="product-slider-section">
+      <div class="slider-wrapper" id="sliderWrapper">
+        <div class="slider-track" id="sliderTrack"></div>
+        <button class="slider-btn slider-prev" onclick="sliderPrev()">&#8249;</button>
+        <button class="slider-btn slider-next" onclick="sliderNext()">&#8250;</button>
+        <div class="slider-dots" id="sliderDots"></div>
+      </div>
+    </div>
+
+    <!-- ÜRÜNLER -->
+    <div id="products">
+      <div class="section-header">
+        <h2><span>📦</span> <span id="sectionTitle">Tüm Ürünler</span></h2>
+        <span id="productCount" style="font-size:13px;color:var(--muted);"></span>
+      </div>
+      <div id="productsGrid" class="products-grid">
+        <div class="loading"><div class="spinner"></div><p>Yükleniyor...</p></div>
+      </div>
+      <div id="pagination" class="pagination"></div>
+    </div>
+
+  </div>
+</main>
+
+
+<!-- HAKKIMIZDA + PAYLAŞIMLAR -->
+<section class="about-section" id="hakkimizda">
+  <div class="container">
+
+    <!-- Başlık -->
+    <div class="section-header" style="margin-bottom:32px;">
+      <h2><span>🏢</span> Hakkımızda & Paylaşımlar</h2>
+    </div>
+
+    <!-- Hakkımızda Kartı -->
+    <div class="about-card" id="aboutCard">
+      <div class="about-img-wrap" id="aboutImgWrap">
+        <div class="about-img-placeholder">🔑</div>
+      </div>
+      <div class="about-text" id="aboutText">
+        <div class="loading" style="padding:20px 0;"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- Paylaşımlar -->
+    <div style="margin-top:48px;">
+      <div class="section-header" style="margin-bottom:24px;">
+        <h2><span>📰</span> Son Paylaşımlar</h2>
+      </div>
+      <div class="posts-grid" id="postsGrid">
+        <div class="loading"><div class="spinner"></div><p>Yükleniyor...</p></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+
+    <!-- Features — footer üst kısmında -->
+    <div class="footer-features">
+      <div class="footer-feature-item">
+        <span class="fi-icon">🔑</span>
+        <div class="fi-text"><strong>Yerinde Hizmet</strong><span>Kapıda anahtar kopyalama</span></div>
+      </div>
+      <div class="footer-feature-item">
+        <span class="fi-icon">⚡</span>
+        <div class="fi-text"><strong>Hızlı Teslimat</strong><span>Aynı gün programlama</span></div>
+      </div>
+      <div class="footer-feature-item">
+        <span class="fi-icon">🛡️</span>
+        <div class="fi-text"><strong>Garantili Ürün</strong><span>6 ay garanti</span></div>
+      </div>
+      <div class="footer-feature-item">
+        <span class="fi-icon">📞</span>
+        <div class="fi-text"><strong>7/24 Destek</strong><span>Acil çilingir hizmeti</span></div>
+      </div>
+    </div>
+
+    <div class="footer-grid">
+      <div>
+        <h4>🔑 Merkez Oto Anahtar</h4>
+        <p>Oto anahtar, kumanda ve kilit sistemi konusunda uzman ekibimizle hizmetinizdeyiz. Tüm araç markaları için yedek anahtar, transponder ve uzaktan kumanda temin ederiz.</p>
+      </div>
+      <div>
+        <h4>Kategoriler</h4>
+        <ul id="footerCategories"></ul>
+      </div>
+      <div>
+        <h4>Hizmetler</h4>
+        <ul>
+          <li><a href="#">Anahtar Kopyalama</a></li>
+          <li><a href="#">Kumanda Programlama</a></li>
+          <li><a href="#">Acil Çilingir</a></li>
+          <li><a href="#">Araç Kilidi Açma</a></li>
+          <li><a href="#">Transponder Yapımı</a></li>
+        </ul>
+      </div>
+      <div class="footer-contact">
+        <h4>İletişim</h4>
+        <p><span class="ic">💬</span> <a href="https://wa.me/905386470132" target="_blank" style="color:#25D366;">WhatsApp ile Yazın</a></p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2024 Merkez Oto Anahtar. Tüm hakları saklıdır.</span>
+      <span>Tüm fiyatlar KDV dahildir.</span>
+    </div>
+  </div>
+</footer>
+
+<div class="toast-container" id="toastContainer"></div>
+<script src="/app.js"></script>
+</body>
+</html>

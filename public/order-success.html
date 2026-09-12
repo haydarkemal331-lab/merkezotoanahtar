@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sipariş Alındı - Merkez Oto Anahtar</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <style>
+    .success-page { min-height:80vh; display:flex; align-items:center; justify-content:center; padding:40px 20px; }
+    .success-card {
+      background:var(--card); border:1px solid var(--border);
+      border-radius:var(--radius-lg); max-width:560px; width:100%;
+      padding:52px 44px; text-align:center;
+      animation:fadeUp .6s ease both;
+      box-shadow:0 32px 80px rgba(0,0,0,0.4);
+      position:relative; overflow:hidden;
+    }
+    .success-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,#4ade80,var(--blue-mid)); }
+    .success-icon { font-size:72px; margin-bottom:20px; animation:pulse 2s ease; display:inline-block; filter:drop-shadow(0 0 20px rgba(34,197,94,0.4)); }
+    .success-title { font-family:'Rajdhani',sans-serif; font-size:30px; font-weight:700; color:var(--white); margin-bottom:10px; text-transform:uppercase; letter-spacing:.5px; }
+    .success-sub { font-size:14px; color:var(--muted); margin-bottom:28px; line-height:1.7; }
+    .order-no-box {
+      background:var(--bg3); border:1px solid var(--border);
+      border-radius:10px; padding:16px 24px; margin-bottom:28px;
+      display:inline-block;
+    }
+    .order-no-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+    .order-no-val { font-family:'Rajdhani',sans-serif; font-size:24px; font-weight:700; color:var(--white); letter-spacing:2px; }
+    .status-timeline { text-align:left; margin-bottom:28px; }
+    .timeline-item { display:flex; align-items:flex-start; gap:14px; padding:10px 0; }
+    .timeline-dot { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; margin-top:2px; }
+    .tl-done { background:rgba(34,197,94,0.15); border:1.5px solid #4ade80; }
+    .tl-active { background:rgba(234,179,8,0.12); border:1.5px solid #fbbf24; animation:pulse 2s ease infinite; }
+    .tl-wait { background:var(--bg3); border:1.5px solid var(--border); }
+    .tl-line { width:2px; height:24px; background:var(--border); margin:0 auto; display:block; }
+    .tl-info strong { font-size:13px; color:var(--white); font-weight:700; display:block; }
+    .tl-info span { font-size:12px; color:var(--muted); }
+    .action-btns { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+    .btn-orders { background:linear-gradient(135deg,var(--red),var(--red-dark)); color:#fff; padding:13px 26px; border-radius:10px; font-weight:700; font-size:14px; box-shadow:0 4px 16px var(--red-glow); transition:var(--trans); text-decoration:none; }
+    .btn-orders:hover { transform:translateY(-2px); box-shadow:0 8px 24px var(--red-glow); color:#fff; }
+    .btn-home { background:var(--card2); border:1px solid var(--border); color:var(--muted); padding:13px 26px; border-radius:10px; font-weight:600; font-size:14px; transition:var(--trans); text-decoration:none; }
+    .btn-home:hover { border-color:var(--blue-mid); color:var(--blue-light); }
+  </style>
+</head>
+<body>
+<header class="header"><div class="container">
+  <a class="logo" href="/">
+    <div class="logo-icon"><svg width="36" height="36" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="20" cy="20" r="14" stroke="#f5a623" stroke-width="5" fill="none"/><circle cx="20" cy="20" r="6" fill="#f5a623"/><rect x="32" y="17" width="24" height="6" rx="3" fill="#f5a623"/><rect x="50" y="23" width="6" height="9" rx="2.5" fill="#f5a623"/><rect x="41" y="23" width="5" height="7" rx="2" fill="#f5a623"/></svg></div>
+    <div class="logo-text"><h1>MERKEZ <span>OTO</span> ANAHTAR</h1><p>Anahtar &amp; Kumanda Uzmanı</p></div>
+  </a>
+</div></header>
+
+<div class="success-page">
+  <div class="success-card">
+    <div class="success-icon">✅</div>
+    <div class="success-title">Siparişiniz Alındı!</div>
+    <div class="success-sub">Siparişiniz başarıyla oluşturuldu. Satıcı en kısa sürede siparişinizi onaylayacak.</div>
+
+    <div class="order-no-box">
+      <div class="order-no-label">Sipariş Numaranız</div>
+      <div class="order-no-val" id="orderNo">---</div>
+    </div>
+
+    <!-- Durum Timeline -->
+    <div class="status-timeline">
+      <div class="timeline-item">
+        <div><div class="timeline-dot tl-done">✓</div></div>
+        <div class="tl-info"><strong>Sipariş Alındı</strong><span>Az önce</span></div>
+      </div>
+      <div style="padding-left:15px;"><div class="tl-line"></div></div>
+      <div class="timeline-item">
+        <div><div class="timeline-dot tl-active">⏳</div></div>
+        <div class="tl-info"><strong>Satıcı Onayı Bekleniyor</strong><span>Satıcı siparişinizi inceliyor</span></div>
+      </div>
+      <div style="padding-left:15px;"><div class="tl-line"></div></div>
+      <div class="timeline-item">
+        <div><div class="timeline-dot tl-wait">📦</div></div>
+        <div class="tl-info"><strong>Hazırlanıyor</strong><span>Ürününüz hazırlanacak</span></div>
+      </div>
+      <div style="padding-left:15px;"><div class="tl-line"></div></div>
+      <div class="timeline-item">
+        <div><div class="timeline-dot tl-wait">🚚</div></div>
+        <div class="tl-info"><strong>Kargoya Verildi</strong><span>Takip numarası paylaşılacak</span></div>
+      </div>
+      <div style="padding-left:15px;"><div class="tl-line"></div></div>
+      <div class="timeline-item">
+        <div><div class="timeline-dot tl-wait">🎉</div></div>
+        <div class="tl-info"><strong>Teslim Edildi</strong><span>Sipariş tamamlandı</span></div>
+      </div>
+    </div>
+
+    <div class="action-btns">
+      <a href="/hesabim" class="btn-orders">📦 Siparişlerimi Gör</a>
+      <a href="/" class="btn-home">🏠 Ana Sayfaya Dön</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const no = params.get('no');
+  if (no) document.getElementById('orderNo').textContent = no;
+</script>
+</body>
+</html>

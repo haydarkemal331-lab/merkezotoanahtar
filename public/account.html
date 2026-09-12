@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hesabım - Merkez Oto Anahtar</title>
+  <link rel="stylesheet" href="/style.css"/>
+  <style>
+    .account-layout { display: flex; gap: 28px; margin: 24px 0 60px; align-items: flex-start; }
+    .account-sidebar {
+      width: 240px; flex-shrink: 0;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+      animation: slideRight .4s ease both;
+      position: sticky; top: 80px;
+    }
+    .account-sidebar-header {
+      padding: 20px;
+      background: linear-gradient(135deg, rgba(230,57,70,0.08), rgba(37,99,235,0.05));
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    .avatar {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--red), var(--blue-mid));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; font-weight: 800; color: #fff;
+      margin: 0 auto 10px;
+      box-shadow: 0 4px 16px var(--red-glow);
+      font-family: 'Rajdhani', sans-serif;
+    }
+    .account-name { font-size: 15px; font-weight: 700; color: var(--white); }
+    .account-email { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .account-nav a {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 18px; color: var(--muted); font-size: 13px;
+      font-weight: 500; transition: var(--trans);
+      border-left: 2px solid transparent;
+      text-decoration: none;
+    }
+    .account-nav a:hover { color: var(--white); background: rgba(255,255,255,0.03); border-left-color: var(--red); }
+    .account-nav a.active { color: var(--white); background: rgba(230,57,70,0.08); border-left-color: var(--red); font-weight: 700; }
+    .account-nav a span { font-size: 17px; }
+    .account-main { flex: 1; min-width: 0; }
+    .account-section { display: none; animation: fadeUp .4s ease both; }
+    .account-section.active { display: block; }
+    .section-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; margin-bottom: 20px;
+    }
+    .section-card-header {
+      padding: 16px 22px; border-bottom: 1px solid var(--border);
+      background: linear-gradient(90deg, rgba(230,57,70,0.05), transparent);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .section-card-header h3 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 16px; font-weight: 700; color: var(--white);
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+    .section-card-body { padding: 24px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { margin-bottom: 0; }
+    .form-group label { display: block; font-size: 11px; font-weight: 700; color: #9ca3af; margin-bottom: 7px; text-transform: uppercase; letter-spacing: .8px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 11px 14px;
+      background: var(--bg3); border: 1.5px solid var(--border);
+      border-radius: 9px; font-size: 14px; color: var(--text);
+      outline: none; transition: var(--trans); font-family: inherit;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--blue-mid); background: var(--card2); }
+    .form-group input::placeholder { color: var(--muted); }
+    .full-width { grid-column: 1 / -1; }
+    .save-btn {
+      background: linear-gradient(135deg, var(--red), var(--red-dark));
+      color: #fff; padding: 11px 24px; border: none;
+      border-radius: 9px; font-size: 14px; font-weight: 700;
+      font-family: inherit; cursor: pointer; transition: var(--trans);
+      box-shadow: 0 4px 16px var(--red-glow); margin-top: 20px;
+    }
+    .save-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px var(--red-glow); }
+    .save-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+    .alert { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-top: 12px; display: none; }
+    .alert-success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: #4ade80; }
+    .alert-error   { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: #f87171; }
+    /* Siparisler */
+    .empty-orders {
+      text-align: center; padding: 60px 20px; color: var(--muted);
+    }
+    .empty-orders .icon { font-size: 56px; opacity: .2; margin-bottom: 16px; }
+    .empty-orders h3 { font-size: 18px; color: #9ca3af; margin-bottom: 8px; }
+    .order-card {
+      background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px 20px; margin-bottom: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px; transition: var(--trans);
+    }
+    .order-card:hover { border-color: rgba(230,57,70,0.25); }
+    .order-status {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 700; padding: 4px 12px;
+      border-radius: 50px; font-family: 'Rajdhani', sans-serif;
+    }
+    .status-pending   { background: rgba(234,179,8,0.12);  color: #fbbf24; border: 1px solid rgba(234,179,8,0.25); }
+    .status-preparing { background: rgba(37,99,235,0.12);  color: var(--blue-light); border: 1px solid rgba(37,99,235,0.25); }
+    .status-shipped   { background: rgba(168,85,247,0.12); color: #c084fc; border: 1px solid rgba(168,85,247,0.25); }
+    .status-delivered { background: rgba(34,197,94,0.12);  color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+    .status-cancelled { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+    @media (max-width: 768px) {
+      .account-layout { flex-direction: column; }
+      .account-sidebar { width: 100%; position: relative; top: 0; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="container">
+    <div class="topbar-info">
+      <span class="topbar-clock">🕐 <span id="topClock">--:--:--</span></span>
+      <span class="topbar-rate">
+        <span class="rate-label">💵 USD/TRY:</span>
+        <span class="rate-val" id="topUsd">--</span>
+        <span class="rate-change" id="topUsdChange"></span>
+      </span>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <a href="https://wa.me/905386470132" target="_blank" style="color:#25D366;font-weight:700;font-size:12px;">💬 WhatsApp</a>
+      <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        <span id="themeLabel">🌙 Gece</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="container">
+    <a class="logo" href="/">
+      <div class="logo-icon">
+        <svg width="36" height="36" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="14" stroke="#f5a623" stroke-width="5" fill="none"/>
+          <circle cx="20" cy="20" r="6" fill="#f5a623"/>
+          <rect x="32" y="17" width="24" height="6" rx="3" fill="#f5a623"/>
+          <rect x="50" y="23" width="6" height="9" rx="2.5" fill="#f5a623"/>
+          <rect x="41" y="23" width="5" height="7" rx="2" fill="#f5a623"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <h1>MERKEZ <span>OTO</span> ANAHTAR</h1>
+        <p>Anahtar &amp; Kumanda Uzmanı</p>
+      </div>
+    </a>
+    <div class="search-bar">
+      <input type="text" placeholder="Ürün ara..."/>
+      <button onclick="window.location.href='/'">🔍</button>
+    </div>
+    <div class="header-actions" id="headerActions"></div>
+  </div>
+</header>
+
+<nav class="nav">
+  <div class="container">
+    <a href="/"><span>🏠</span> Ana Sayfa</a>
+    <div id="navCategories" style="display:contents"></div>
+  </div>
+</nav>
+
+<main>
+  <div class="container">
+    <div class="breadcrumb">
+      <a href="/">Ana Sayfa</a><span>›</span><span>Hesabım</span>
+    </div>
+
+    <div class="account-layout">
+
+      <!-- SIDEBAR -->
+      <aside class="account-sidebar">
+        <div class="account-sidebar-header">
+          <div class="avatar" id="avatarInitial">?</div>
+          <div class="account-name" id="sidebarName">Yükleniyor...</div>
+          <div class="account-email" id="sidebarEmail"></div>
+        </div>
+        <nav class="account-nav">
+          <a href="#" class="active" onclick="switchTab('orders',this)"><span>📦</span> Siparişlerim</a>
+          <a href="#" onclick="switchTab('profile',this)"><span>👤</span> Profil Bilgileri</a>
+          <a href="#" onclick="switchTab('address',this)"><span>📍</span> Adres Bilgileri</a>
+          <a href="#" onclick="switchTab('password',this)"><span>🔒</span> Şifre Değiştir</a>
+          <a href="#" onclick="doLogout()" style="color:var(--red);margin-top:8px;"><span>🚪</span> Çıkış Yap</a>
+        </nav>
+      </aside>
+
+      <!-- ANA İÇERİK -->
+      <div class="account-main">
+
+        <!-- SİPARİŞLERİM -->
+        <div id="tab-orders" class="account-section active">
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3>📦 Siparişlerim</h3>
+            </div>
+            <div class="section-card-body" id="ordersContent">
+              <div class="loading"><div class="spinner"></div><p>Yükleniyor...</p></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROFİL -->
+        <div id="tab-profile" class="account-section">
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3>👤 Profil Bilgileri</h3>
+            </div>
+            <div class="section-card-body">
+              <form onsubmit="saveProfile(event)">
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>Ad Soyad *</label>
+                    <input type="text" id="profName" required/>
+                  </div>
+                  <div class="form-group">
+                    <label>Telefon</label>
+                    <input type="tel" id="profPhone" placeholder="05xx xxx xx xx"/>
+                  </div>
+                  <div class="form-group full-width">
+                    <label>E-posta (değiştirilemez)</label>
+                    <input type="email" id="profEmail" disabled style="opacity:.5;cursor:not-allowed;"/>
+                  </div>
+                </div>
+                <div id="profAlert" class="alert"></div>
+                <button type="submit" class="save-btn" id="profSaveBtn">💾 Kaydet</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- ADRES -->
+        <div id="tab-address" class="account-section">
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3>📍 Adres Bilgileri</h3>
+            </div>
+            <div class="section-card-body">
+              <form onsubmit="saveAddress(event)">
+                <div class="form-grid">
+                  <div class="form-group full-width">
+                    <label>Adres</label>
+                    <input type="text" id="addrAddress" placeholder="Mahalle, Sokak, No..."/>
+                  </div>
+                  <div class="form-group">
+                    <label>İl</label>
+                    <input type="text" id="addrCity" placeholder="Ankara"/>
+                  </div>
+                  <div class="form-group">
+                    <label>İlçe</label>
+                    <input type="text" id="addrDistrict" placeholder="Çankaya"/>
+                  </div>
+                  <div class="form-group">
+                    <label>Posta Kodu</label>
+                    <input type="text" id="addrZip" placeholder="06000"/>
+                  </div>
+                </div>
+                <div id="addrAlert" class="alert"></div>
+                <button type="submit" class="save-btn" id="addrSaveBtn">💾 Kaydet</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- ŞİFRE -->
+        <div id="tab-password" class="account-section">
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3>🔒 Şifre Değiştir</h3>
+            </div>
+            <div class="section-card-body">
+              <form onsubmit="changePassword(event)">
+                <div class="form-grid">
+                  <div class="form-group full-width">
+                    <label>Mevcut Şifre</label>
+                    <input type="password" id="pwOld" placeholder="••••••••"/>
+                  </div>
+                  <div class="form-group">
+                    <label>Yeni Şifre</label>
+                    <input type="password" id="pwNew" placeholder="••••••••"/>
+                  </div>
+                  <div class="form-group">
+                    <label>Yeni Şifre Tekrar</label>
+                    <input type="password" id="pwNew2" placeholder="••••••••"/>
+                  </div>
+                </div>
+                <div id="pwAlert" class="alert"></div>
+                <button type="submit" class="save-btn" id="pwSaveBtn">🔒 Şifreyi Güncelle</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /account-main -->
+    </div><!-- /account-layout -->
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div><h4>🔑 Merkez Oto Anahtar</h4><p>Oto anahtar ve kumanda uzmanı.</p></div>
+      <div><h4>Hızlı Linkler</h4><ul><li><a href="/">Ana Sayfa</a></li><li><a href="/giris">Giriş Yap</a></li></ul></div>
+      <div><h4>Hizmetler</h4><ul><li><a href="#">Anahtar Kopyalama</a></li><li><a href="#">Kumanda Programlama</a></li></ul></div>
+      <div class="footer-contact"><h4>İletişim</h4><p><span class="ic">💬</span> <a href="https://wa.me/905386470132" target="_blank" style="color:#25D366;">WhatsApp</a></p></div>
+    </div>
+    <div class="footer-bottom"><span>© 2024 Merkez Oto Anahtar</span></div>
+  </div>
+</footer>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- SİPARİŞ DETAY MODAL -->
+<div id="orderDetailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);width:100%;max-width:580px;max-height:88vh;overflow-y:auto;position:relative;">
+    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),var(--blue-mid));border-radius:var(--radius-lg) var(--radius-lg) 0 0;"></div>
+    <div style="padding:22px 26px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:.5px;">Sipariş Detayı</h3>
+      <button onclick="closeOrderModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);transition:var(--trans);" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'">✕</button>
+    </div>
+    <div id="orderDetailContent" style="padding:24px;"></div>
+  </div>
+</div>
+<script src="/app.js"></script>
+<script>
+let currentUser = null;
+
+// Giriş kontrolü
+fetch('/api/auth/me').then(r=>r.json()).then(d=>{
+  if (!d.loggedIn) {
+    window.location.href = '/giris?redirect=/hesabim';
+    return;
+  }
+  currentUser = d.user;
+  fillUserData(d.user);
+  loadOrders(); // Siparişleri de yükle
+});
+
+function fillUserData(u) {
+  // Sidebar
+  const initial = (u.name||'?')[0].toUpperCase();
+  document.getElementById('avatarInitial').textContent = initial;
+  document.getElementById('sidebarName').textContent = u.name;
+  document.getElementById('sidebarEmail').textContent = u.email;
+  // Profil formu
+  document.getElementById('profName').value   = u.name  || '';
+  document.getElementById('profPhone').value  = u.phone || '';
+  document.getElementById('profEmail').value  = u.email || '';
+  // Adres formu
+  document.getElementById('addrAddress').value  = u.address  || '';
+  document.getElementById('addrCity').value     = u.city     || '';
+  document.getElementById('addrDistrict').value = u.district || '';
+  document.getElementById('addrZip').value      = u.zip      || '';
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('.account-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.account-nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (el) el.classList.add('active');
+}
+
+// ─── SİPARİŞLER ──────────────────────────────────────────────────────────────
+const STATUS_MAP = {
+  pending:   { label: '⏳ Beklemede',       cls: 'status-pending' },
+  confirmed: { label: '✅ Onaylandı',        cls: 'status-preparing' },
+  preparing: { label: '📦 Hazırlanıyor',     cls: 'status-preparing' },
+  shipped:   { label: '🚚 Kargoya Verildi',  cls: 'status-shipped' },
+  delivered: { label: '🎉 Teslim Edildi',    cls: 'status-delivered' },
+  cancelled: { label: '❌ İptal Edildi',     cls: 'status-cancelled' }
+};
+
+async function loadOrders() {
+  const el = document.getElementById('ordersContent');
+  if (!el) return;
+  const res  = await fetch('/api/orders/my');
+  const orders = await res.json();
+  renderOrders(orders, el);
+}
+
+function renderOrders(orders, el) {
+  if (!orders.length) {
+    el.innerHTML = `
+      <div class="empty-orders">
+        <div class="icon">📦</div>
+        <h3>Henüz siparişiniz yok</h3>
+        <p>Ürünleri inceleyip sepetinize ekleyebilirsiniz.</p>
+        <a href="/" style="display:inline-block;margin-top:16px;background:var(--red);color:#fff;padding:10px 24px;border-radius:8px;font-weight:700;font-size:14px;">Alışverişe Başla →</a>
+      </div>`;
+    return;
+  }
+  el.innerHTML = orders.map(o => {
+    const st = STATUS_MAP[o.status] || STATUS_MAP.pending;
+    const date = new Date(o.created_at).toLocaleDateString('tr-TR');
+    return `
+      <div class="order-card" onclick="openOrderDetail(${o.id})" style="cursor:pointer;">
+        <div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--white);letter-spacing:.5px;">${o.orderNo}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px;">📅 ${date} · ${o.items.length} ürün</div>
+        </div>
+        <div style="text-align:center;">
+          <span class="order-status ${st.cls}">${st.label}</span>
+          ${o.trackingNo ? `<div style="font-size:11px;color:var(--blue-light);margin-top:4px;">📦 Takip: ${o.trackingNo}</div>` : ''}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--white);">₺${o.total.toLocaleString('tr-TR',{minimumFractionDigits:2})}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">Detay →</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function openOrderDetail(id) {
+  const modal = document.getElementById('orderDetailModal');
+  const content = document.getElementById('orderDetailContent');
+  modal.style.display = 'flex';
+  content.innerHTML = '<div class="loading" style="padding:32px 0;"><div class="spinner"></div></div>';
+
+  const res   = await fetch(`/api/orders/${id}`);
+  const order = await res.json();
+  const st    = STATUS_MAP[order.status] || STATUS_MAP.pending;
+  const date  = new Date(order.created_at).toLocaleDateString('tr-TR');
+
+  content.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--white);">${order.orderNo}</div>
+        <div style="font-size:12px;color:var(--muted);">📅 ${date}</div>
+      </div>
+      <span class="order-status ${st.cls}" style="font-size:13px;padding:6px 14px;">${st.label}</span>
+    </div>
+
+    ${order.trackingNo ? `
+      <div style="background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.2);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--blue-light);">
+        📦 Kargo Takip No: <strong style="font-family:'Rajdhani',sans-serif;letter-spacing:1px;">${order.trackingNo}</strong>
+      </div>` : ''}
+
+    <!-- Ürünler -->
+    <div style="background:var(--bg3);border-radius:10px;overflow:hidden;margin-bottom:16px;">
+      ${order.items.map(i => `
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);">
+          ${i.image ? `<img src="${i.image}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--border);"/>` : '<div style="width:48px;height:48px;background:var(--card);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;">🔑</div>'}
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;color:var(--white);">${i.name}</div>
+            <div style="font-size:11px;color:var(--muted);">Seri: ${i.seri_no || '-'} · ${i.quantity} adet</div>
+          </div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--white);">₺${(i.price*i.quantity).toLocaleString('tr-TR',{minimumFractionDigits:2})}</div>
+        </div>`).join('')}
+    </div>
+
+    <!-- Teslimat -->
+    <div style="background:var(--bg3);border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:13px;">
+      <div style="font-weight:700;color:var(--white);margin-bottom:8px;">📍 Teslimat Adresi</div>
+      <div style="color:var(--muted);line-height:1.8;">
+        ${order.address}${order.district ? ', ' + order.district : ''}, ${order.city} ${order.zip || ''}<br/>
+        📱 ${order.phone}
+        ${order.note ? `<br/>📝 ${order.note}` : ''}
+      </div>
+    </div>
+
+    <!-- Toplam -->
+    <div style="border-top:1px solid var(--border);padding-top:14px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:6px;"><span>Ara Toplam</span><span>₺${order.subtotal.toLocaleString('tr-TR',{minimumFractionDigits:2})}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:10px;"><span>Kargo</span><span>${order.shippingFee===0?'<span style="color:#4ade80;">Ücretsiz</span>':'₺'+order.shippingFee.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:800;color:var(--white);"><span>Toplam</span><span style="font-family:'Rajdhani',sans-serif;">₺${order.total.toLocaleString('tr-TR',{minimumFractionDigits:2})}</span></div>
+    </div>
+
+    ${order.status === 'pending' || order.status === 'confirmed' ? `
+      <button onclick="cancelOrder(${order.id})" style="margin-top:18px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#f87171;width:100%;padding:11px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:var(--trans);" onmouseover="this.style.background='rgba(239,68,68,0.2)'" onmouseout="this.style.background='rgba(239,68,68,0.1)'">
+        ❌ Siparişi İptal Et
+      </button>` : ''}`;
+}
+
+async function cancelOrder(id) {
+  if (!confirm('Bu siparişi iptal etmek istediğinize emin misiniz?')) return;
+  const res  = await fetch(`/api/admin/orders/${id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'cancelled' })
+  });
+  const data = await res.json();
+  if (data.success) {
+    closeOrderModal();
+    showAlert(document.createElement('div'), '', '');
+    showToastMsg('Sipariş iptal edildi.', 'success');
+    loadOrders();
+  }
+}
+
+function closeOrderModal() {
+  document.getElementById('orderDetailModal').style.display = 'none';
+}
+
+// Modal dışına tıkla kapat
+document.getElementById('orderDetailModal').addEventListener('click', function(e) {
+  if (e.target === this) closeOrderModal();
+});
+
+function showToastMsg(msg, type) {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type || '');
+  t.innerHTML = '<span>' + (type==='success'?'✅':'ℹ️') + '</span> ' + msg;
+  c.appendChild(t); setTimeout(() => t.remove(), 3500);
+}
+
+async function saveProfile(e) {
+  e.preventDefault();
+  const btn = document.getElementById('profSaveBtn');
+  btn.disabled = true; btn.textContent = '...';
+  const res  = await fetch('/api/auth/profile', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: document.getElementById('profName').value, phone: document.getElementById('profPhone').value })
+  });
+  const data = await res.json();
+  btn.disabled = false; btn.textContent = '💾 Kaydet';
+  const al = document.getElementById('profAlert');
+  if (data.success) {
+    currentUser = data.user; fillUserData(data.user);
+    showAlert(al, '✅ Profil güncellendi!', 'success');
+  } else showAlert(al, data.error || 'Hata.', 'error');
+}
+
+async function saveAddress(e) {
+  e.preventDefault();
+  const btn = document.getElementById('addrSaveBtn');
+  btn.disabled = true; btn.textContent = '...';
+  const res  = await fetch('/api/auth/profile', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      address:  document.getElementById('addrAddress').value,
+      city:     document.getElementById('addrCity').value,
+      district: document.getElementById('addrDistrict').value,
+      zip:      document.getElementById('addrZip').value
+    })
+  });
+  const data = await res.json();
+  btn.disabled = false; btn.textContent = '💾 Kaydet';
+  const al = document.getElementById('addrAlert');
+  if (data.success) { currentUser = data.user; showAlert(al, '✅ Adres güncellendi!', 'success'); }
+  else showAlert(al, data.error || 'Hata.', 'error');
+}
+
+async function changePassword(e) {
+  e.preventDefault();
+  const btn  = document.getElementById('pwSaveBtn');
+  const al   = document.getElementById('pwAlert');
+  const pw   = document.getElementById('pwNew').value;
+  const pw2  = document.getElementById('pwNew2').value;
+  if (pw !== pw2) { showAlert(al, 'Şifreler eşleşmiyor.', 'error'); return; }
+  if (pw.length < 6) { showAlert(al, 'En az 6 karakter gerekli.', 'error'); return; }
+  btn.disabled = true; btn.textContent = '...';
+  const res  = await fetch('/api/auth/password', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ oldPassword: document.getElementById('pwOld').value, newPassword: pw })
+  });
+  const data = await res.json();
+  btn.disabled = false; btn.textContent = '🔒 Şifreyi Güncelle';
+  if (data.success) {
+    document.getElementById('pwOld').value = '';
+    document.getElementById('pwNew').value = '';
+    document.getElementById('pwNew2').value = '';
+    showAlert(al, '✅ Şifre güncellendi!', 'success');
+  } else showAlert(al, data.error || 'Hata.', 'error');
+}
+
+async function doLogout() {
+  await fetch('/api/auth/logout', { method: 'POST' });
+  window.location.href = '/';
+}
+
+function showAlert(el, msg, type) {
+  el.textContent = msg;
+  el.className = 'alert alert-' + type;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 4000);
+}
+</script>
+</body>
+</html>
