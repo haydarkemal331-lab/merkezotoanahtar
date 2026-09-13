@@ -541,6 +541,122 @@ app.delete('/api/cart', requireUser, (req, res) => {
   res.json({ success: true, items: [], count: 0, total: 0 });
 });
 
+// ─── ADRES YÖNETİMİ ──────────────────────────────────────────────────────────
+
+app.get('/api/addresses', requireUser, (req, res) => {
+  res.json(db.getAddresses(req.session.userId));
+});
+
+app.post('/api/addresses', requireUser, (req, res) => {
+  const { title, name, phone, address, city, district, zip, isDefault } = req.body;
+  if (!name || !phone || !address || !city)
+    return res.status(400).json({ error: 'Ad, telefon, adres ve şehir zorunludur.' });
+  try {
+    const addr = db.addAddress(req.session.userId, { title, name, phone, address, city, district, zip, isDefault });
+    res.json({ success: true, address: addr });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+app.put('/api/addresses/:id', requireUser, (req, res) => {
+  const { title, name, phone, address, city, district, zip, isDefault } = req.body;
+  try {
+    const addr = db.updateAddress(req.params.id, req.session.userId, { title, name, phone, address, city, district, zip, isDefault });
+    res.json({ success: true, address: addr });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+app.delete('/api/addresses/:id', requireUser, (req, res) => {
+  try {
+    db.deleteAddress(req.params.id, req.session.userId);
+    res.json({ success: true });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+app.patch('/api/addresses/:id/default', requireUser, (req, res) => {
+  db.setDefaultAddress(req.params.id, req.session.userId);
+  res.json({ success: true });
+});
+
+// ─── İADE TALEPLERİ ──────────────────────────────────────────────────────────
+
+// Müşteri iade talebi oluştur
+app.post('/api/returns', requireUser, async (req, res) => {
+  const { orderId, reason, description } = req.body;
+  if (!orderId || !reason) return res.status(400).json({ error: 'Sipariş ve iade nedeni zorunludur.' });
+  const order = db.getOrderById(orderId);
+  if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı.' });
+  if (order.userId !== req.session.userId) return res.status(403).json({ error: 'Bu siparişe erişim izniniz yok.' });
+  if (!['delivered', 'shipped'].includes(order.status))
+    return res.status(400).json({ error: 'Sadece teslim edilmiş siparişler iade edilebilir.' });
+  const productNames = order.items.map(i => i.name).join(', ');
+  const ret = db.addReturn({
+    userId: req.session.userId,
+    orderId: order.id,
+    orderNo: order.orderNo,
+    productNames,
+    reason,
+    description
+  });
+  // Admin'e mail gönder
+  const user = db.getUserById(req.session.userId);
+  if (user) {
+    mailer.sendMail({
+      to: process.env.MAIL_USER || 'merkezotoanahtar07@gmail.com',
+      subject: `🔄 Yeni İade Talebi — ${ret.returnNo}`,
+      html: `<div style="font-family:Arial;padding:20px;background:#0d0d0d;color:#e8eaf0;">
+        <h2 style="color:#e63946;">Yeni İade Talebi</h2>
+        <p><strong>İade No:</strong> ${ret.returnNo}</p>
+        <p><strong>Sipariş:</strong> ${order.orderNo}</p>
+        <p><strong>Müşteri:</strong> ${user.name} (${user.email})</p>
+        <p><strong>Ürünler:</strong> ${productNames}</p>
+        <p><strong>Neden:</strong> ${reason}</p>
+        <p><strong>Açıklama:</strong> ${description || '-'}</p>
+        <p><a href="https://merkezotoanahtar.com/admin/panel" style="background:#e63946;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;">Admin Panelde İncele</a></p>
+      </div>`
+    }).catch(e => console.error('[MAIL] İade bildirimi gönderilemedi:', e.message));
+  }
+  res.json({ success: true, return: ret });
+});
+
+// Müşterinin kendi iade talepleri
+app.get('/api/returns/my', requireUser, (req, res) => {
+  res.json(db.getReturns({ userId: req.session.userId }));
+});
+
+// Admin — tüm iade talepleri
+app.get('/api/admin/returns', requireAdmin, (req, res) => {
+  const { status } = req.query;
+  res.json(db.getReturns({ status: status || undefined }));
+});
+
+// Admin — iade talebi güncelle
+app.patch('/api/admin/returns/:id', requireAdmin, (req, res) => {
+  const { status, adminNote } = req.body;
+  if (!['pending','approved','rejected'].includes(status))
+    return res.status(400).json({ error: 'Geçersiz durum.' });
+  try {
+    const ret = db.updateReturnStatus(req.params.id, status, adminNote);
+    // Müşteriye mail gönder
+    const user = db.getUserById(ret.userId);
+    if (user) {
+      const statusText = status === 'approved' ? '✅ Onaylandı' : '❌ Reddedildi';
+      mailer.sendMail({
+        to: user.email,
+        subject: `${statusText} — İade Talebiniz (${ret.returnNo})`,
+        html: `<div style="font-family:Arial;padding:20px;background:#0d0d0d;color:#e8eaf0;">
+          <h2 style="color:${status==='approved'?'#4ade80':'#f87171'};">İade Talebiniz ${statusText}</h2>
+          <p><strong>İade No:</strong> ${ret.returnNo}</p>
+          <p><strong>Sipariş:</strong> ${ret.orderNo}</p>
+          ${adminNote ? `<p><strong>Açıklama:</strong> ${adminNote}</p>` : ''}
+          ${status==='approved' ? '<p>İade süreciniz başlatılmıştır. Ürünü göndermek için bizimle iletişime geçin.</p>' : ''}
+          <p><a href="https://merkezotoanahtar.com/hesabim" style="background:#e63946;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;">Hesabıma Git</a></p>
+        </div>`
+      }).catch(e => console.error('[MAIL] İade durumu maili gönderilemedi:', e.message));
+    }
+    res.json({ success: true, return: ret });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 // ─── ADMIN KULLANICI YÖNETİMİ ────────────────────────────────────────────────
 
 app.get('/api/admin/users', requireAdmin, (req, res) => {
@@ -594,6 +710,18 @@ app.post('/api/auth/register', async (req, res) => {
     mailer.sendWelcome(user).catch(e =>
       console.error('[MAIL] Hoşgeldin maili gönderilemedi:', e.message)
     );
+    // Admin'e yeni üye bildirimi
+    mailer.sendMail({
+      to: process.env.MAIL_USER || 'merkezotoanahtar07@gmail.com',
+      subject: `👤 Yeni Üye: ${user.name}`,
+      html: `<div style="font-family:Arial;padding:20px;background:#0d0d0d;color:#e8eaf0;">
+        <h2 style="color:#3b82f6;">Yeni Üye Kaydı</h2>
+        <p><strong>Ad:</strong> ${user.name}</p>
+        <p><strong>E-posta:</strong> ${user.email}</p>
+        <p><strong>Telefon:</strong> ${user.phone || '-'}</p>
+        <p><strong>Kayıt:</strong> ${new Date().toLocaleString('tr-TR')}</p>
+      </div>`
+    }).catch(e => console.error('[MAIL] Üye bildirimi gönderilemedi:', e.message));
 
     res.json({ success: true, user });
   } catch (e) {

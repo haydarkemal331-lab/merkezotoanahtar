@@ -585,6 +585,123 @@ const db = {
     return readDB().admins.find(a => a.username === username) || null;
   },
 
+  // ─── ADRES YÖNETİMİ ───────────────────────────────────────────────────────
+  getAddresses(userId) {
+    const data = readDB();
+    return (data.addresses || []).filter(a => a.userId === parseInt(userId));
+  },
+
+  getAddressById(id) {
+    return (readDB().addresses || []).find(a => a.id === parseInt(id)) || null;
+  },
+
+  addAddress(userId, { title, name, phone, address, city, district, zip, isDefault }) {
+    const data = readDB();
+    if (!data.addresses) data.addresses = [];
+    if (!data._meta.lastAddressId) data._meta.lastAddressId = 0;
+    // Varsayılan yapılıyorsa diğerlerini kaldır
+    if (isDefault) {
+      data.addresses.forEach(a => { if (a.userId === parseInt(userId)) a.isDefault = false; });
+    }
+    // İlk adres otomatik varsayılan
+    const userAddrs = data.addresses.filter(a => a.userId === parseInt(userId));
+    data._meta.lastAddressId++;
+    const addr = {
+      id: data._meta.lastAddressId,
+      userId: parseInt(userId),
+      title: title || 'Adresim',
+      name, phone, address, city,
+      district: district || '',
+      zip: zip || '',
+      isDefault: isDefault || userAddrs.length === 0
+    };
+    data.addresses.push(addr);
+    writeDB(data);
+    return addr;
+  },
+
+  updateAddress(id, userId, fields) {
+    const data = readDB();
+    const idx = (data.addresses || []).findIndex(a => a.id === parseInt(id) && a.userId === parseInt(userId));
+    if (idx === -1) throw new Error('Adres bulunamadı.');
+    if (fields.isDefault) {
+      data.addresses.forEach(a => { if (a.userId === parseInt(userId)) a.isDefault = false; });
+    }
+    data.addresses[idx] = { ...data.addresses[idx], ...fields };
+    writeDB(data);
+    return data.addresses[idx];
+  },
+
+  deleteAddress(id, userId) {
+    const data = readDB();
+    const addr = (data.addresses || []).find(a => a.id === parseInt(id) && a.userId === parseInt(userId));
+    if (!addr) throw new Error('Adres bulunamadı.');
+    data.addresses = data.addresses.filter(a => !(a.id === parseInt(id) && a.userId === parseInt(userId)));
+    // Silinen varsayılansa ilk adresi varsayılan yap
+    if (addr.isDefault) {
+      const remaining = data.addresses.filter(a => a.userId === parseInt(userId));
+      if (remaining.length > 0) remaining[0].isDefault = true;
+    }
+    writeDB(data);
+    return addr;
+  },
+
+  setDefaultAddress(id, userId) {
+    const data = readDB();
+    data.addresses = (data.addresses || []).map(a => {
+      if (a.userId === parseInt(userId)) a.isDefault = a.id === parseInt(id);
+      return a;
+    });
+    writeDB(data);
+  },
+
+  // ─── İADE TALEPLERİ ───────────────────────────────────────────────────────
+  getReturns({ userId, status } = {}) {
+    const data = readDB();
+    let returns = (data.returns || []).map(r => ({
+      ...r,
+      order: (data.orders || []).find(o => o.id === r.orderId) || null,
+      user:  (data.users  || []).find(u => u.id === r.userId)  || null
+    }));
+    if (userId) returns = returns.filter(r => r.userId === parseInt(userId));
+    if (status) returns = returns.filter(r => r.status === status);
+    return returns.sort((a, b) => b.id - a.id);
+  },
+
+  addReturn({ userId, orderId, orderNo, productNames, reason, description }) {
+    const data = readDB();
+    if (!data.returns) data.returns = [];
+    if (!data._meta.lastReturnId) data._meta.lastReturnId = 0;
+    data._meta.lastReturnId++;
+    const ret = {
+      id: data._meta.lastReturnId,
+      returnNo: 'IAD-' + String(data._meta.lastReturnId).padStart(4, '0'),
+      userId: parseInt(userId),
+      orderId: parseInt(orderId),
+      orderNo,
+      productNames,
+      reason,
+      description: description || '',
+      status: 'pending', // pending | approved | rejected
+      adminNote: '',
+      created_at: new Date().toISOString()
+    };
+    data.returns.push(ret);
+    writeDB(data);
+    return ret;
+  },
+
+  updateReturnStatus(id, status, adminNote) {
+    const data = readDB();
+    const idx = (data.returns || []).findIndex(r => r.id === parseInt(id));
+    if (idx === -1) throw new Error('İade talebi bulunamadı.');
+    data.returns[idx].status    = status;
+    data.returns[idx].adminNote = adminNote || '';
+    data.returns[idx].updated_at = new Date().toISOString();
+    writeDB(data);
+    return data.returns[idx];
+  },
+
   // ─── KULLANICI SİSTEMİ ────────────────────────────────────────────────────
   getUsers() {
     return readDB().users || [];

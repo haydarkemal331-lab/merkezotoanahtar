@@ -137,6 +137,88 @@
 let cartItems = [];
 let currentUser = null;
 
+
+let savedAddresses = [];
+let selectedAddressId = null;
+
+async function loadSavedAddresses() {
+  try {
+    const res = await fetch('/api/addresses');
+    savedAddresses = await res.json();
+  } catch(e) { savedAddresses = []; }
+}
+
+function renderSavedAddresses() {
+  const el = document.getElementById('savedAddressList');
+  if (!el) return;
+  if (!savedAddresses.length) {
+    // Adres yoksa direkt yeni adres formunu aç
+    document.getElementById('newAddrForm').style.display = 'block';
+    document.getElementById('newAddrToggleRow').style.display = 'none';
+    return;
+  }
+  el.innerHTML = savedAddresses.map(a => `
+    <div onclick="selectSavedAddress(${a.id})" id="addr-card-${a.id}"
+      style="padding:14px 16px;background:${a.isDefault || a.id===selectedAddressId?'rgba(230,57,70,0.06)':'var(--bg3)'};
+      border:1.5px solid ${a.id===selectedAddressId?'var(--red)':a.isDefault?'rgba(230,57,70,0.3)':'var(--border)'};
+      border-radius:10px;margin-bottom:8px;cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:14px;">
+      <div style="width:20px;height:20px;border-radius:50%;border:2px solid ${a.id===selectedAddressId?'var(--red)':'var(--muted)'};
+        display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.2s;">
+        ${a.id===selectedAddressId?'<div style="width:10px;height:10px;border-radius:50%;background:var(--red);"></div>':''}
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:var(--white);">${a.title||'Adresim'} ${a.isDefault?'<span style="font-size:10px;color:var(--red);font-weight:600;">(Varsayılan)</span>':''}</div>
+        <div style="font-size:12px;color:var(--muted);">${a.name} · ${a.phone}</div>
+        <div style="font-size:12px;color:var(--muted);">${a.address}${a.district?', '+a.district:''}, ${a.city}</div>
+      </div>
+    </div>`).join('') +
+    `<a href="/hesabim" target="_blank" style="display:block;text-align:center;font-size:12px;color:var(--blue-light);margin-top:4px;margin-bottom:8px;">+ Hesabımdan adres yönet</a>`;
+
+  // Varsayılan adresi seç
+  const def = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
+  if (def && !selectedAddressId) selectSavedAddress(def.id);
+}
+
+function selectSavedAddress(id) {
+  selectedAddressId = id;
+  // Yeni adres formunu kapat
+  document.getElementById('newAddrForm').style.display = 'none';
+  document.getElementById('newAddrToggleBtn').textContent = '+ Farklı Adres Gir';
+  // Kartları güncelle
+  savedAddresses.forEach(a => {
+    const card = document.getElementById('addr-card-' + a.id);
+    if (card) {
+      card.style.border = a.id===id ? '1.5px solid var(--red)' : '1.5px solid var(--border)';
+      card.style.background = a.id===id ? 'rgba(230,57,70,0.06)' : 'var(--bg3)';
+      const dot = card.querySelector('div');
+      dot.style.borderColor = a.id===id ? 'var(--red)' : 'var(--muted)';
+      dot.innerHTML = a.id===id ? '<div style="width:10px;height:10px;border-radius:50%;background:var(--red);"></div>' : '';
+    }
+  });
+}
+
+function toggleNewAddrForm() {
+  const form = document.getElementById('newAddrForm');
+  const btn  = document.getElementById('newAddrToggleBtn');
+  const isOpen = form.style.display !== 'none';
+  if (isOpen) {
+    form.style.display = 'none';
+    btn.textContent = savedAddresses.length ? '+ Farklı Adres Gir' : '+ Yeni Adres Gir';
+    if (savedAddresses.length) {
+      const def = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
+      selectSavedAddress(def.id);
+    }
+  } else {
+    form.style.display = 'block';
+    selectedAddressId = null;
+    btn.textContent = '✕ İptal';
+    savedAddresses.forEach(a => {
+      const card = document.getElementById('addr-card-' + a.id);
+      if (card) { card.style.border = '1.5px solid var(--border)'; card.style.background = 'var(--bg3)'; }
+    });
+  }
+}
+
 async function initCheckout() {
   // Auth kontrol
   const authRes = await fetch('/api/auth/me');
@@ -150,7 +232,10 @@ async function initCheckout() {
   if (!cartData.items || cartData.items.length === 0) { window.location.href = '/sepet'; return; }
   cartItems = cartData.items;
 
+  // Kayıtlı adresleri yükle
+  await loadSavedAddresses();
   renderCheckout(cartData);
+  setTimeout(renderSavedAddresses, 50);
 }
 
 function renderCheckout(cartData) {
@@ -265,16 +350,35 @@ function selectPayment(method) {
 async function placeOrder() {
   const btn = document.getElementById('placeOrderBtn');
   // Validasyon
-  const address  = document.getElementById('addr_address').value.trim();
-  const city     = document.getElementById('addr_city').value.trim();
-  const phone    = document.getElementById('addr_phone').value.trim();
-  const district = document.getElementById('addr_district').value.trim();
-  const zip      = document.getElementById('addr_zip').value.trim();
-  const note     = document.getElementById('order_note').value.trim();
+  let address, city, phone, district, zip;
+  const note = document.getElementById('order_note')?.value?.trim() || '';
 
-  if (!address || !city || !phone) {
-    showToast('Adres, şehir ve telefon zorunludur.', 'error');
-    return;
+  if (selectedAddressId) {
+    // Kayıtlı adres kullan
+    const sel = savedAddresses.find(a => a.id === selectedAddressId);
+    if (!sel) { showToast('Lütfen bir teslimat adresi seçin.', 'error'); return; }
+    address = sel.address; city = sel.city; phone = sel.phone;
+    district = sel.district; zip = sel.zip;
+    // Ad bilgisini order için
+    document.getElementById('addr_name') && (document.getElementById('addr_name').value = sel.name);
+  } else {
+    // Yeni adres formu
+    address  = document.getElementById('addr_address')?.value?.trim() || '';
+    city     = document.getElementById('addr_city')?.value?.trim() || '';
+    phone    = document.getElementById('addr_phone')?.value?.trim() || '';
+    district = document.getElementById('addr_district')?.value?.trim() || '';
+    zip      = document.getElementById('addr_zip')?.value?.trim() || '';
+    if (!address || !city || !phone) {
+      showToast('Adres, şehir ve telefon zorunludur.', 'error'); return;
+    }
+    // Kaydet seçeneği işaretliyse kaydet
+    if (document.getElementById('saveNewAddr')?.checked && currentUser) {
+      fetch('/api/addresses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Adresim', name: currentUser.name, phone, address, city, district, zip })
+      }).catch(() => {});
+    }
   }
 
   btn.disabled = true;
@@ -307,4 +411,59 @@ function showToast(msg, type) {
 initCheckout();
 </script>
 </body>
-</html>
+</html>          <!-- Teslimat Adresi -->
+          <div class="checkout-card">
+            <div class="checkout-card-header"><h3>📍 Teslimat Adresi</h3></div>
+            <div class="checkout-card-body">
+              <!-- Kayıtlı adresler -->
+              <div id="savedAddressList"></div>
+              <!-- Yeni adres toggle -->
+              <div id="newAddrToggleRow" style="margin-top:8px;">
+                <button type="button" onclick="toggleNewAddrForm()" id="newAddrToggleBtn"
+                  style="width:100%;padding:12px;background:var(--bg3);border:1.5px dashed var(--border);border-radius:9px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;transition:var(--trans);font-family:inherit;"
+                  onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-light)'"
+                  onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+                  + Yeni Adres Gir
+                </button>
+              </div>
+              <!-- Yeni adres formu (gizli) -->
+              <div id="newAddrForm" style="display:none;margin-top:14px;">
+                <div class="form-grid2">
+                  <div class="fg">
+                    <label>Ad Soyad *</label>
+                    <input type="text" id="addr_name" value="${currentUser.name}"/>
+                  </div>
+                  <div class="fg">
+                    <label>Telefon *</label>
+                    <input type="tel" id="addr_phone" value="${currentUser.phone || ''}" placeholder="05xx xxx xx xx"/>
+                  </div>
+                  <div class="fg full">
+                    <label>Adres *</label>
+                    <input type="text" id="addr_address" placeholder="Mahalle, Cadde, Sokak, No..."/>
+                  </div>
+                  <div class="fg">
+                    <label>İl *</label>
+                    <input type="text" id="addr_city" placeholder="İstanbul"/>
+                  </div>
+                  <div class="fg">
+                    <label>İlçe</label>
+                    <input type="text" id="addr_district" placeholder="Kadıköy"/>
+                  </div>
+                  <div class="fg">
+                    <label>Posta Kodu</label>
+                    <input type="text" id="addr_zip" placeholder="34000"/>
+                  </div>
+                  <div class="fg full" style="display:flex;align-items:center;gap:10px;">
+                    <input type="checkbox" id="saveNewAddr" style="width:16px;height:16px;accent-color:var(--red);cursor:pointer;"/>
+                    <label for="saveNewAddr" style="font-size:13px;color:var(--muted);cursor:pointer;margin:0;">Bu adresi hesabıma kaydet</label>
+                  </div>
+                </div>
+              </div>
+              <!-- Sipariş notu her zaman görünür -->
+              <div class="fg full" style="margin-top:14px;">
+                <label>Sipariş Notu</label>
+                <input type="text" id="order_note" placeholder="Kargo görevlisine not (opsiyonel)..."/>
+              </div>
+            </div>
+          </div>
+          

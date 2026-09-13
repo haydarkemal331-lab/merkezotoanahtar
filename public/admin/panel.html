@@ -37,6 +37,9 @@
       <a href="#" onclick="showSection('orders',this)">
         <span class="nav-icon">&#x1F6D2;</span><span class="nav-text">Sipari&#351;ler</span>
       </a>
+      <a href="#" onclick="showSection('returns',this)">
+        <span class="nav-icon">&#x1F504;</span><span class="nav-text">&#304;ade Talepleri</span>
+      </a>
       <a href="#" onclick="showSection('users',this)">
         <span class="nav-icon">&#x1F465;</span><span class="nav-text">Uyeler</span>
       </a>
@@ -90,6 +93,7 @@
           <div class="stat-card"><span class="stat-icon">&#x1F6D2;</span><div class="stat-info"><strong id="statOrders">-</strong><span>Sipari&#351;ler</span></div></div>
           <div class="stat-card"><span class="stat-icon">&#x2705;</span><div class="stat-info"><strong id="statStock">-</strong><span>Stokta Var</span></div></div>
           <div class="stat-card"><span class="stat-icon">&#x1F465;</span><div class="stat-info"><strong id="statUsers">-</strong><span>Kayitli Uye</span></div></div>
+          <div class="stat-card"><span class="stat-icon">&#x1F504;</span><div class="stat-info"><strong id="statReturns">-</strong><span>&#304;ade Talebi</span></div></div>
         </div>
         <div class="dash-summary">
           <div class="dash-sum-card"><span class="dsc-label">Bug&#252;n Kazan&#231;</span><span class="dsc-val" id="dashTodayRev">₺0</span><span class="dsc-sub" id="dashTodayCount">0 sat&#305;&#351;</span></div>
@@ -109,6 +113,44 @@
             <button class="btn-primary btn-sm" onclick="showSection('sales',null)">T&#252;m Sat&#305;&#351;lar &rarr;</button>
           </div>
           <div id="recentSalesTable"></div>
+        </div>
+      </div>
+
+      <!-- İADE TALEPLERİ -->
+      <div id="section-returns" style="display:none">
+
+        <!-- Filtre bar -->
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+          <select id="returnStatusFilter" style="padding:9px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:9px;color:var(--text);font-size:13px;outline:none;" onchange="filterReturns()">
+            <option value="">Tum Durumlar</option>
+            <option value="pending">Beklemede</option>
+            <option value="approved">Onaylandi</option>
+            <option value="rejected">Reddedildi</option>
+          </select>
+          <input type="text" id="returnSearch" placeholder="Siparis no veya musteri ara..." style="padding:9px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:9px;color:var(--text);font-size:13px;outline:none;width:260px;" oninput="filterReturns()"/>
+        </div>
+
+        <div class="admin-table-wrap">
+          <div class="admin-table-header">
+            <h3>&#304;ade Talepleri (<span id="returnsCount">0</span>)</h3>
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>&#304;ade No</th>
+                  <th>Musteri</th>
+                  <th>Siparis No</th>
+                  <th>Urunler</th>
+                  <th>Neden</th>
+                  <th>Durum</th>
+                  <th>Tarih</th>
+                  <th>Islem</th>
+                </tr>
+              </thead>
+              <tbody id="returnsTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -510,6 +552,27 @@
   </div>
 </div>
 
+<!-- İADE İŞLEM MODAL -->
+<div class="modal-overlay hidden" id="returnActionModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h3 id="returnActionTitle">&#304;ade Talebini &#304;ncele</h3>
+      <button class="modal-close" onclick="document.getElementById('returnActionModal').classList.add('hidden')">&#x2715;</button>
+    </div>
+    <div id="returnActionContent" style="padding:4px 0;margin-bottom:16px;"></div>
+    <div class="form-group">
+      <label>Admin Notu (Müşteriye gönderilir)</label>
+      <textarea id="returnAdminNote" style="min-height:80px;" placeholder="Onay veya red sebebi, iade talimatı..."></textarea>
+    </div>
+    <input type="hidden" id="returnActionId"/>
+    <div class="modal-footer">
+      <button class="btn-gray" onclick="document.getElementById('returnActionModal').classList.add('hidden')">Kapat</button>
+      <button class="btn-sm" style="background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.25);padding:10px 18px;border-radius:9px;font-size:13px;font-weight:700;font-family:inherit;" onclick="processReturn('rejected')">&#x274C; Reddet</button>
+      <button class="btn-save" onclick="processReturn('approved')">&#x2705; Onayla</button>
+    </div>
+  </div>
+</div>
+
 <!-- SIL ONAY -->
 <div class="modal-overlay hidden" id="deleteModal">
   <div class="modal" style="max-width:360px;text-align:center;">
@@ -546,7 +609,7 @@ setInterval(()=>{
 let allProducts=[], allCats=[], allSubCats=[], allPosts=[], allSales=[], allOrders=[], allUsers=[];
 
 async function loadAll(){
-  await Promise.all([loadProducts(),loadCats(),loadSubCats(),loadPosts(),loadSalesData(),loadOrdersAdmin(),loadUsers()]);
+  await Promise.all([loadProducts(),loadCats(),loadSubCats(),loadPosts(),loadSalesData(),loadOrdersAdmin(),loadUsers(),loadReturnsAdmin()]);
   loadDashboard();
 }
 async function loadProducts(){
@@ -773,13 +836,14 @@ function showSection(name,el){
   document.getElementById('section-'+name).style.display='block';
   document.querySelectorAll('.sidebar-nav a').forEach(a=>a.classList.remove('active'));
   if(el)el.classList.add('active');
-  const titles={dashboard:'Dashboard',sales:'Satislar',products:'Urunler',categories:'Kategoriler',about:'Hakkimizda',posts:'Paylasimlar'};
-  const icons={dashboard:'&#x1F4CA;',sales:'&#x1F4B0;',products:'&#x1F4E6;',categories:'&#x1F5C2;',about:'&#x1F3E2;',posts:'&#x1F4F0;'};
+  const titles={dashboard:'Dashboard',sales:'Satislar',products:'Urunler',categories:'Kategoriler',about:'Hakkimizda',posts:'Paylasimlar',orders:'Siparisler',returns:'Iade Talepleri',users:'Uyeler'};
+  const icons={dashboard:'&#x1F4CA;',sales:'&#x1F4B0;',products:'&#x1F4E6;',categories:'&#x1F5C2;',about:'&#x1F3E2;',posts:'&#x1F4F0;',orders:'&#x1F6D2;',returns:'&#x1F504;',users:'&#x1F465;'};
   document.getElementById('pageTitle').textContent=titles[name]||name;
   const iconEl=document.getElementById('pageTitleIcon');if(iconEl)iconEl.innerHTML=icons[name]||'';
   if(name==='products')loadProducts();
   if(name==='orders'){loadOrdersAdmin();}
   if(name==='users'){loadUsers();}
+  if(name==='returns'){loadReturnsAdmin();}
   if(name==='categories'){loadCats();loadSubCats();}
   if(name==='about')loadAboutAdmin();
   if(name==='sales'){loadSalesData();loadDashboard();}
@@ -1273,13 +1337,111 @@ function closeAdminOrderModal(){
   if(m)m.classList.add('hidden');
 }
 
+
+// ─── İADE TALEPLERİ ───────────────────────────────────────────────────────────
+let allReturns = [];
+
+const RETURN_STATUS_ADMIN = {
+  pending:  { label: 'Beklemede', color: '#fbbf24', bg: 'rgba(251,191,36,0.1)', border: 'rgba(251,191,36,0.25)' },
+  approved: { label: 'Onaylandi', color: '#4ade80', bg: 'rgba(34,197,94,0.1)',  border: 'rgba(34,197,94,0.25)' },
+  rejected: { label: 'Reddedildi',color: '#f87171', bg: 'rgba(239,68,68,0.1)',  border: 'rgba(239,68,68,0.25)' }
+};
+
+async function loadReturnsAdmin() {
+  allReturns = await fetch('/api/admin/returns').then(r=>r.json());
+  filterReturns();
+  // Stats
+  const el = document.getElementById('statReturns');
+  if(el) el.textContent = allReturns.filter(r=>r.status==='pending').length;
+}
+
+function filterReturns() {
+  const statusF = document.getElementById('returnStatusFilter').value;
+  const searchF = document.getElementById('returnSearch').value.toLowerCase();
+  let filtered = allReturns;
+  if(statusF) filtered = filtered.filter(r=>r.status===statusF);
+  if(searchF) filtered = filtered.filter(r=>
+    r.orderNo.toLowerCase().includes(searchF) ||
+    r.returnNo.toLowerCase().includes(searchF) ||
+    (r.user&&(r.user.name||'').toLowerCase().includes(searchF))
+  );
+  renderReturnsTable(filtered);
+}
+
+function renderReturnsTable(returns) {
+  const tbody = document.getElementById('returnsTableBody');
+  const countEl = document.getElementById('returnsCount');
+  if(countEl) countEl.textContent = returns.length;
+  if(!returns.length) {
+    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--muted);">Iade talebi yok.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = returns.map(r=>{
+    const st = RETURN_STATUS_ADMIN[r.status]||RETURN_STATUS_ADMIN.pending;
+    const date = new Date(r.created_at).toLocaleDateString('tr-TR');
+    const userName = r.user ? r.user.name : 'Bilinmiyor';
+    return '<tr>'+
+      '<td><strong style="font-family:Rajdhani,sans-serif;color:var(--white);letter-spacing:.5px;">'+r.returnNo+'</strong></td>'+
+      '<td><div style="font-size:13px;color:var(--white);">'+userName+'</div>'+(r.user?'<div style="font-size:11px;color:var(--muted);">'+r.user.email+'</div>':'')+'</td>'+
+      '<td><span style="font-family:Rajdhani,sans-serif;color:var(--blue-light);font-size:12px;">'+r.orderNo+'</span></td>'+
+      '<td style="max-width:140px;font-size:12px;color:var(--muted);">'+(r.productNames||'').slice(0,60)+'</td>'+
+      '<td style="font-size:12px;color:var(--muted);">'+r.reason+'</td>'+
+      '<td><span style="display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;background:'+st.bg+';color:'+st.color+';border:1px solid '+st.border+';">'+st.label+'</span></td>'+
+      '<td style="font-size:12px;color:var(--muted);">'+date+'</td>'+
+      '<td>'+
+        '<button class="btn-sm btn-edit" onclick="openReturnAction('+r.id+')">&#x1F50D; &#304;ncele</button>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+}
+
+function openReturnAction(id) {
+  const r = allReturns.find(x=>x.id===id);
+  if(!r) return;
+  document.getElementById('returnActionId').value = id;
+  document.getElementById('returnAdminNote').value = r.adminNote || '';
+  const st = RETURN_STATUS_ADMIN[r.status]||RETURN_STATUS_ADMIN.pending;
+  document.getElementById('returnActionContent').innerHTML =
+    '<div style="background:var(--bg3);border-radius:9px;padding:14px 18px;font-size:13px;">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'+
+        '<strong style="color:var(--white);">'+r.returnNo+'</strong>'+
+        '<span style="background:'+st.bg+';color:'+st.color+';font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;">'+st.label+'</span>'+
+      '</div>'+
+      '<div style="color:var(--muted);line-height:1.8;">'+
+        '<div><strong style="color:#ccc;">Musteri:</strong> '+(r.user?r.user.name+' ('+r.user.email+')':'Bilinmiyor')+'</div>'+
+        '<div><strong style="color:#ccc;">Siparis:</strong> '+r.orderNo+'</div>'+
+        '<div><strong style="color:#ccc;">Urunler:</strong> '+(r.productNames||'-')+'</div>'+
+        '<div><strong style="color:#ccc;">Neden:</strong> '+r.reason+'</div>'+
+        (r.description?'<div><strong style="color:#ccc;">Aciklama:</strong> '+r.description+'</div>':'')+
+      '</div>'+
+    '</div>';
+  document.getElementById('returnActionModal').classList.remove('hidden');
+}
+
+async function processReturn(status) {
+  const id = document.getElementById('returnActionId').value;
+  const adminNote = document.getElementById('returnAdminNote').value.trim();
+  const res = await fetch('/api/admin/returns/'+id, {
+    method:'PATCH',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({status, adminNote})
+  });
+  const data = await res.json();
+  if(data.success) {
+    showToast(status==='approved'?'Iade onaylandi!':'Iade reddedildi.', status==='approved'?'success':'error');
+    document.getElementById('returnActionModal').classList.add('hidden');
+    await loadReturnsAdmin();
+    loadDashboard();
+  } else showToast(data.error||'Hata.','error');
+}
+
 async function doLogout(){await fetch('/api/admin/logout',{method:'POST'});window.location.href='/admin';}
 function showToast(msg,type){
   const c=document.getElementById('toastContainer');const t=document.createElement('div');t.className='toast '+(type||'');
   t.innerHTML='<span>'+(type==='success'?'&#x2705;':type==='error'?'&#x274C;':'&#x2139;&#xFE0F;')+'</span> '+msg;
   c.appendChild(t);setTimeout(()=>t.remove(),3500);
 }
-['productModal','catModal','subCatModal','deleteModal','postModal','orderDetailAdminModal','trackingModal','userDetailModal'].forEach(id=>{
+['productModal','catModal','subCatModal','deleteModal','postModal','orderDetailAdminModal','trackingModal','userDetailModal','returnActionModal'].forEach(id=>{
   const el=document.getElementById(id);
   if(el)el.addEventListener('click',function(e){if(e.target===this)this.classList.add('hidden');});
 });

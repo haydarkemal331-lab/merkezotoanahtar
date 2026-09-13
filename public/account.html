@@ -186,8 +186,9 @@
         </div>
         <nav class="account-nav">
           <a href="#" class="active" onclick="switchTab('orders',this)"><span>📦</span> Siparişlerim</a>
+          <a href="#" onclick="switchTab('addresses',this)"><span>📍</span> Adreslerim</a>
+          <a href="#" onclick="switchTab('returns',this)"><span>🔄</span> İade Taleplerim</a>
           <a href="#" onclick="switchTab('profile',this)"><span>👤</span> Profil Bilgileri</a>
-          <a href="#" onclick="switchTab('address',this)"><span>📍</span> Adres Bilgileri</a>
           <a href="#" onclick="switchTab('password',this)"><span>🔒</span> Şifre Değiştir</a>
           <a href="#" onclick="doLogout()" style="color:var(--red);margin-top:8px;"><span>🚪</span> Çıkış Yap</a>
         </nav>
@@ -237,35 +238,27 @@
           </div>
         </div>
 
-        <!-- ADRES -->
-        <div id="tab-address" class="account-section">
+        <!-- ADRESLERİM -->
+        <div id="tab-addresses" class="account-section">
           <div class="section-card">
             <div class="section-card-header">
-              <h3>📍 Adres Bilgileri</h3>
+              <h3>📍 Adreslerim</h3>
+              <button class="save-btn" onclick="openAddressModal()" style="margin-top:0;padding:9px 18px;font-size:13px;">+ Yeni Adres Ekle</button>
             </div>
-            <div class="section-card-body">
-              <form onsubmit="saveAddress(event)">
-                <div class="form-grid">
-                  <div class="form-group full-width">
-                    <label>Adres</label>
-                    <input type="text" id="addrAddress" placeholder="Mahalle, Sokak, No..."/>
-                  </div>
-                  <div class="form-group">
-                    <label>İl</label>
-                    <input type="text" id="addrCity" placeholder="Ankara"/>
-                  </div>
-                  <div class="form-group">
-                    <label>İlçe</label>
-                    <input type="text" id="addrDistrict" placeholder="Çankaya"/>
-                  </div>
-                  <div class="form-group">
-                    <label>Posta Kodu</label>
-                    <input type="text" id="addrZip" placeholder="06000"/>
-                  </div>
-                </div>
-                <div id="addrAlert" class="alert"></div>
-                <button type="submit" class="save-btn" id="addrSaveBtn">💾 Kaydet</button>
-              </form>
+            <div class="section-card-body" id="addressesList">
+              <div class="loading"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- İADE TALEPLERİM -->
+        <div id="tab-returns" class="account-section">
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3>🔄 İade Taleplerim</h3>
+            </div>
+            <div class="section-card-body" id="returnsList">
+              <div class="loading"><div class="spinner"></div></div>
             </div>
           </div>
         </div>
@@ -319,6 +312,95 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- ADRES MODAL -->
+<div id="addressModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);width:100%;max-width:500px;max-height:90vh;overflow-y:auto;position:relative;">
+    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),var(--blue-mid));border-radius:var(--radius-lg) var(--radius-lg) 0 0;"></div>
+    <div style="padding:22px 26px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <h3 id="addrModalTitle" style="font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:.5px;">Yeni Adres Ekle</h3>
+      <button onclick="closeAddressModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);">✕</button>
+    </div>
+    <form id="addressForm" onsubmit="saveAddress(event)" style="padding:24px;">
+      <input type="hidden" id="editAddressId"/>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Adres Başlığı</label>
+          <input type="text" id="addrTitle" placeholder="Ev, İş, Diğer..."/>
+        </div>
+        <div class="form-group">
+          <label>Ad Soyad *</label>
+          <input type="text" id="addrName" required/>
+        </div>
+        <div class="form-group">
+          <label>Telefon *</label>
+          <input type="tel" id="addrPhone" required placeholder="05xx xxx xx xx"/>
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Adres *</label>
+          <input type="text" id="addrAddress" required placeholder="Mahalle, Cadde, No..."/>
+        </div>
+        <div class="form-group">
+          <label>İl *</label>
+          <input type="text" id="addrCity" required placeholder="İstanbul"/>
+        </div>
+        <div class="form-group">
+          <label>İlçe</label>
+          <input type="text" id="addrDistrict" placeholder="Kadıköy"/>
+        </div>
+        <div class="form-group">
+          <label>Posta Kodu</label>
+          <input type="text" id="addrZip" placeholder="34000"/>
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:10px;margin-top:auto;">
+          <input type="checkbox" id="addrIsDefault" style="width:16px;height:16px;accent-color:var(--red);cursor:pointer;"/>
+          <label for="addrIsDefault" style="cursor:pointer;font-size:14px;margin:0;">Varsayılan adres yap</label>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:20px;justify-content:flex-end;padding-top:16px;border-top:1px solid var(--border);">
+        <button type="button" onclick="closeAddressModal()" style="background:var(--bg3);color:var(--muted);padding:11px 22px;border-radius:9px;font-size:13px;font-weight:600;border:1px solid var(--border);font-family:inherit;cursor:pointer;">İptal</button>
+        <button type="submit" id="addrSaveBtn" style="background:linear-gradient(135deg,var(--red),var(--red-dark));color:#fff;padding:11px 26px;border-radius:9px;font-size:14px;font-weight:700;border:none;font-family:inherit;cursor:pointer;box-shadow:0 4px 16px var(--red-glow);">💾 Kaydet</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- İADE MODAL -->
+<div id="returnModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);width:100%;max-width:480px;position:relative;">
+    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#fbbf24,var(--red));border-radius:var(--radius-lg) var(--radius-lg) 0 0;"></div>
+    <div style="padding:22px 26px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;color:var(--white);text-transform:uppercase;">İade Talebi</h3>
+      <button onclick="closeReturnModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);">✕</button>
+    </div>
+    <div style="padding:24px;">
+      <input type="hidden" id="returnOrderId"/>
+      <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:9px;padding:12px 16px;margin-bottom:18px;font-size:13px;color:#fbbf24;">
+        ⚠️ İade talebiniz incelendikten sonra size e-posta ile bildirim yapılacaktır.
+      </div>
+      <div class="form-group">
+        <label>İade Nedeni *</label>
+        <select id="returnReason" required style="width:100%;padding:11px 14px;background:var(--bg3);border:1.5px solid var(--border);border-radius:9px;font-size:14px;color:var(--text);outline:none;font-family:inherit;">
+          <option value="">-- Seçin --</option>
+          <option value="Ürün hasarlı geldi">Ürün hasarlı geldi</option>
+          <option value="Yanlış ürün gönderildi">Yanlış ürün gönderildi</option>
+          <option value="Ürün açıklamayla uyuşmuyor">Ürün açıklamayla uyuşmuyor</option>
+          <option value="Ürün çalışmıyor">Ürün çalışmıyor</option>
+          <option value="Fikir değişikliği">Fikir değişikliği</option>
+          <option value="Diğer">Diğer</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Açıklama</label>
+        <textarea id="returnDescription" style="width:100%;padding:11px 14px;background:var(--bg3);border:1.5px solid var(--border);border-radius:9px;font-size:14px;color:var(--text);outline:none;font-family:inherit;resize:vertical;min-height:90px;" placeholder="Detaylı açıklama yazabilirsiniz..."></textarea>
+      </div>
+      <div style="display:flex;gap:12px;justify-content:flex-end;padding-top:16px;border-top:1px solid var(--border);">
+        <button onclick="closeReturnModal()" style="background:var(--bg3);color:var(--muted);padding:11px 22px;border-radius:9px;font-size:13px;font-weight:600;border:1px solid var(--border);font-family:inherit;cursor:pointer;">İptal</button>
+        <button onclick="submitReturn()" id="returnSubmitBtn" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1a1a2e;padding:11px 26px;border-radius:9px;font-size:14px;font-weight:700;border:none;font-family:inherit;cursor:pointer;">↩ İade Talebi Gönder</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- SİPARİŞ DETAY MODAL -->
 <div id="orderDetailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;">
   <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);width:100%;max-width:580px;max-height:88vh;overflow-y:auto;position:relative;">
@@ -343,7 +425,9 @@ fetch('/api/auth/me').then(r=>r.json()).then(d=>{
   }
   currentUser = d.user;
   fillUserData(d.user);
-  loadOrders(); // Siparişleri de yükle
+  loadOrders();
+  loadAddresses();
+  loadReturns();
 });
 
 function fillUserData(u) {
@@ -368,7 +452,186 @@ function switchTab(name, el) {
   document.querySelectorAll('.account-nav a').forEach(a => a.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   if (el) el.classList.add('active');
+  if (name === 'addresses') loadAddresses();
+  if (name === 'returns') loadReturns();
 }
+
+// ─── ADRESLERİM ───────────────────────────────────────────────────────────────
+let allAddresses = [];
+
+async function loadAddresses() {
+  const res = await fetch('/api/addresses');
+  allAddresses = await res.json();
+  renderAddresses();
+}
+
+function renderAddresses() {
+  const el = document.getElementById('addressesList');
+  if (!el) return;
+  if (!allAddresses.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--muted);"><div style="font-size:48px;opacity:.2;margin-bottom:12px;">📍</div><p>Henüz adres eklenmedi.</p></div>';
+    return;
+  }
+  el.innerHTML = allAddresses.map(a => `
+    <div style="background:var(--card2);border:1px solid ${a.isDefault?'rgba(230,57,70,0.3)':' var(--border)'};border-radius:10px;padding:16px 20px;margin-bottom:12px;position:relative;transition:var(--trans);">
+      ${a.isDefault ? '<span style="position:absolute;top:12px;right:12px;background:rgba(230,57,70,0.12);color:var(--red);font-size:10px;font-weight:700;padding:2px 9px;border-radius:50px;border:1px solid rgba(230,57,70,0.25);">Varsayılan</span>' : ''}
+      <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--white);margin-bottom:6px;">${a.title || 'Adresim'}</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.8;">
+        <div>${a.name} · ${a.phone}</div>
+        <div>${a.address}${a.district ? ', '+a.district : ''}, ${a.city} ${a.zip||''}</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+        <button onclick="openEditAddressModal(${a.id})" style="background:rgba(234,179,8,0.1);color:#fbbf24;border:1px solid rgba(234,179,8,0.2);padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">✏️ Düzenle</button>
+        <button onclick="deleteAddress(${a.id})" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2);padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">🗑️ Sil</button>
+        ${!a.isDefault ? `<button onclick="setDefaultAddress(${a.id})" style="background:rgba(37,99,235,0.1);color:var(--blue-light);border:1px solid rgba(37,99,235,0.2);padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">⭐ Varsayılan Yap</button>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function openAddressModal() {
+  document.getElementById('addrModalTitle').textContent = 'Yeni Adres Ekle';
+  document.getElementById('editAddressId').value = '';
+  document.getElementById('addressForm').reset();
+  document.getElementById('addressModal').style.display = 'flex';
+}
+
+function openEditAddressModal(id) {
+  const a = allAddresses.find(x => x.id === id);
+  if (!a) return;
+  document.getElementById('addrModalTitle').textContent = 'Adresi Düzenle';
+  document.getElementById('editAddressId').value = a.id;
+  document.getElementById('addrTitle').value = a.title || '';
+  document.getElementById('addrName').value = a.name || '';
+  document.getElementById('addrPhone').value = a.phone || '';
+  document.getElementById('addrAddress').value = a.address || '';
+  document.getElementById('addrCity').value = a.city || '';
+  document.getElementById('addrDistrict').value = a.district || '';
+  document.getElementById('addrZip').value = a.zip || '';
+  document.getElementById('addrIsDefault').checked = a.isDefault || false;
+  document.getElementById('addressModal').style.display = 'flex';
+}
+
+function closeAddressModal() {
+  document.getElementById('addressModal').style.display = 'none';
+}
+
+async function saveAddress(e) {
+  e.preventDefault();
+  const btn = document.getElementById('addrSaveBtn');
+  btn.disabled = true; btn.textContent = '...';
+  const id = document.getElementById('editAddressId').value;
+  const body = {
+    title: document.getElementById('addrTitle').value,
+    name: document.getElementById('addrName').value,
+    phone: document.getElementById('addrPhone').value,
+    address: document.getElementById('addrAddress').value,
+    city: document.getElementById('addrCity').value,
+    district: document.getElementById('addrDistrict').value,
+    zip: document.getElementById('addrZip').value,
+    isDefault: document.getElementById('addrIsDefault').checked
+  };
+  const res = await fetch(id ? `/api/addresses/${id}` : '/api/addresses', {
+    method: id ? 'PUT' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  btn.disabled = false; btn.textContent = '💾 Kaydet';
+  if (data.success) { closeAddressModal(); loadAddresses(); showToastMsg(id?'Adres güncellendi!':'Adres eklendi!','success'); }
+  else showToastMsg(data.error||'Hata.','error');
+}
+
+async function deleteAddress(id) {
+  if (!confirm('Bu adresi silmek istediğinize emin misiniz?')) return;
+  const res = await fetch(`/api/addresses/${id}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (data.success) { loadAddresses(); showToastMsg('Adres silindi.','success'); }
+}
+
+async function setDefaultAddress(id) {
+  const res = await fetch(`/api/addresses/${id}/default`, { method: 'PATCH' });
+  const data = await res.json();
+  if (data.success) { loadAddresses(); showToastMsg('Varsayılan adres değiştirildi.','success'); }
+}
+
+// Modal dışı kapat
+document.getElementById('addressModal').addEventListener('click', function(e) {
+  if (e.target === this) closeAddressModal();
+});
+
+// ─── İADE TALEPLERİ ───────────────────────────────────────────────────────────
+const RETURN_STATUS = {
+  pending:  { label: '⏳ Beklemede',  color: '#fbbf24', bg: 'rgba(251,191,36,0.1)' },
+  approved: { label: '✅ Onaylandı',  color: '#4ade80', bg: 'rgba(34,197,94,0.1)' },
+  rejected: { label: '❌ Reddedildi', color: '#f87171', bg: 'rgba(239,68,68,0.1)' }
+};
+
+async function loadReturns() {
+  const el = document.getElementById('returnsList');
+  if (!el) return;
+  const res = await fetch('/api/returns/my');
+  const returns = await res.json();
+  if (!returns.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--muted);"><div style="font-size:48px;opacity:.2;margin-bottom:12px;">🔄</div><p>Henüz iade talebiniz yok.</p></div>';
+    return;
+  }
+  el.innerHTML = returns.map(r => {
+    const st = RETURN_STATUS[r.status] || RETURN_STATUS.pending;
+    return `<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:var(--white);">${r.returnNo}</div>
+          <div style="font-size:12px;color:var(--muted);">Sipariş: ${r.orderNo}</div>
+        </div>
+        <span style="background:${st.bg};color:${st.color};font-size:12px;font-weight:700;padding:4px 12px;border-radius:50px;">${st.label}</span>
+      </div>
+      <div style="font-size:13px;color:var(--muted);"><strong style="color:var(--white);">Neden:</strong> ${r.reason}</div>
+      ${r.description ? `<div style="font-size:13px;color:var(--muted);margin-top:4px;">${r.description}</div>` : ''}
+      ${r.adminNote ? `<div style="margin-top:8px;background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.15);border-radius:7px;padding:8px 12px;font-size:13px;color:var(--blue-light);"><strong>Açıklama:</strong> ${r.adminNote}</div>` : ''}
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;">${new Date(r.created_at).toLocaleDateString('tr-TR')}</div>
+    </div>`;
+  }).join('');
+}
+
+let returnTargetOrderId = null;
+let returnTargetOrderNo = null;
+
+function openReturnModal(orderId, orderNo) {
+  returnTargetOrderId = orderId;
+  returnTargetOrderNo = orderNo;
+  document.getElementById('returnReason').value = '';
+  document.getElementById('returnDescription').value = '';
+  document.getElementById('returnModal').style.display = 'flex';
+}
+
+function closeReturnModal() {
+  document.getElementById('returnModal').style.display = 'none';
+}
+
+async function submitReturn() {
+  const reason = document.getElementById('returnReason').value;
+  const description = document.getElementById('returnDescription').value;
+  if (!reason) { showToastMsg('Lütfen iade nedeni seçin.','error'); return; }
+  const btn = document.getElementById('returnSubmitBtn');
+  btn.disabled = true; btn.textContent = '...';
+  const res = await fetch('/api/returns', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderId: returnTargetOrderId, reason, description })
+  });
+  const data = await res.json();
+  btn.disabled = false; btn.textContent = '↩ İade Talebi Gönder';
+  if (data.success) {
+    closeReturnModal();
+    showToastMsg('İade talebiniz alındı! E-posta ile bildirim yapılacak.','success');
+    switchTab('returns', null);
+    loadReturns();
+  } else showToastMsg(data.error||'Hata.','error');
+}
+
+document.getElementById('returnModal').addEventListener('click', function(e) {
+  if (e.target === this) closeReturnModal();
+});
 
 // ─── SİPARİŞLER ──────────────────────────────────────────────────────────────
 const STATUS_MAP = {
