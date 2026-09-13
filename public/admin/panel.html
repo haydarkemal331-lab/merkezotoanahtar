@@ -75,6 +75,10 @@
         <h1 class="page-title" id="pageTitle">Dashboard</h1>
       </div>
       <div class="topbar-right">
+      <div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green-glow);display:inline-block;animation:pulse 2s ease infinite;"></span>
+        <span>Son: <span id="lastRefreshTime">--:--:--</span></span>
+      </div>
         <div class="topbar-chip">
           <div class="dot"></div>
           <span id="adminGreet">Y&#246;netici</span>
@@ -597,6 +601,169 @@ fetch('/api/admin/check').then(r=>r.json()).then(d=>{
   loadAll();
 });
 
+
+// ─── OTOMATİK YENİLEME (Her 30 saniye) ──────────────────────────────────────
+let autoUpdateInterval = null;
+let lastUpdateTime = Date.now();
+let isTabActive = true;
+
+// Sekme aktif/pasif takibi
+document.addEventListener('visibilitychange', () => {
+  isTabActive = !document.hidden;
+  if (isTabActive) {
+    // Sekmeye geri dönünce hemen yenile
+    silentRefreshAll();
+  }
+});
+
+async function silentRefreshAll() {
+  lastUpdateTime = Date.now();
+  try {
+    // Paralel yükle
+    await Promise.all([
+      refreshDashboard(),
+      refreshOrders(),
+      refreshReturns(),
+      refreshUsers()
+    ]);
+    updateLastRefreshIndicator();
+  } catch(e) { /* sessiz hata */ }
+}
+
+async function refreshDashboard() {
+  // Satış verilerini güncelle
+  const [salesData, orderStats] = await Promise.all([
+    fetch('/api/admin/sales').then(r=>r.json()).catch(()=>[]),
+    fetch('/api/admin/orders/stats').then(r=>r.json()).catch(()=>({}))
+  ]);
+  allSales = salesData;
+
+  const today = new Date().toISOString().split('T')[0];
+  const thisMonth = today.slice(0,7);
+  const todaySales = allSales.filter(s=>s.date===today);
+  const monthSales = allSales.filter(s=>s.date&&s.date.startsWith(thisMonth));
+
+  const todayRev = todaySales.reduce((a,s)=>a+s.price,0);
+  const monthRev = monthSales.reduce((a,s)=>a+s.price,0);
+  const allRev   = allSales.reduce((a,s)=>a+s.price,0);
+
+  safeSet('statSalesToday', todaySales.length);
+  safeSet('statSalesTotal', allSales.length);
+  safeSet('statOrders', orderStats.total||0);
+  safeSet('dashTodayCount', todaySales.length+' satis');
+  safeSet('dashMonthCount', monthSales.length+' satis');
+  safeSet('dashAllCount', allSales.length+' satis');
+  safeSetHTML('dashTodayRev', '&#x20BA;'+todayRev.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}));
+  safeSetHTML('dashMonthRev', '&#x20BA;'+monthRev.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}));
+  safeSetHTML('dashAllRev',   '&#x20BA;'+allRev.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}));
+
+  // Son satışları güncelle
+  const recent = allSales.slice(0,6);
+  const recentEl = document.getElementById('recentSalesTable');
+  if(recentEl && recent.length) {
+    recentEl.innerHTML = '<table><thead><tr><th>Urun</th><th>Seri No</th><th>Fiyat</th><th>Tarih</th></tr></thead><tbody>'+
+    recent.map(s=>'<tr>'+
+      '<td><strong>'+s.product_name+'</strong></td>'+
+      '<td><span class="seri-badge">'+(s.seri_no||'-')+'</span></td>'+
+      '<td><strong style="color:#4ade80;">&#x20BA;'+Number(s.price).toLocaleString('tr-TR',{minimumFractionDigits:2})+'</strong></td>'+
+      '<td style="font-size:12px;color:var(--muted);">'+s.date+'</td>'+
+    '</tr>').join('')+'</tbody></table>';
+  }
+}
+
+async function refreshOrders() {
+  const newOrders = await fetch('/api/admin/orders').then(r=>r.json()).catch(()=>null);
+  if(!newOrders) return;
+  const prevCount = allOrders.length;
+  allOrders = newOrders;
+  safeSet('statOrders', allOrders.filter(o=>o.status!=='cancelled').length);
+  // Siparişler sekmesi açıksa tabloyu güncelle
+  const sec = document.getElementById('section-orders');
+  if(sec && sec.style.display !== 'none') filterOrders();
+  // Yeni sipariş bildirimi
+  if(allOrders.length > prevCount && prevCount > 0) {
+    showNotificationBadge('orders', allOrders.length - prevCount);
+    showToast('Yeni siparis geldi!', 'success');
+  }
+}
+
+async function refreshReturns() {
+  const newReturns = await fetch('/api/admin/returns').then(r=>r.json()).catch(()=>null);
+  if(!newReturns) return;
+  const prevPending = allReturns.filter(r=>r.status==='pending').length;
+  allReturns = newReturns;
+  const nowPending = allReturns.filter(r=>r.status==='pending').length;
+  safeSet('statReturns', nowPending);
+  // İade sekmesi açıksa güncelle
+  const sec = document.getElementById('section-returns');
+  if(sec && sec.style.display !== 'none') filterReturns();
+  // Yeni iade bildirimi
+  if(nowPending > prevPending && prevPending >= 0) {
+    showNotificationBadge('returns', nowPending - prevPending);
+    if(nowPending > prevPending) showToast('Yeni iade talebi!', 'error');
+  }
+}
+
+async function refreshUsers() {
+  const newUsers = await fetch('/api/admin/users').then(r=>r.json()).catch(()=>null);
+  if(!newUsers) return;
+  const prevCount = allUsers.length;
+  allUsers = newUsers;
+  safeSet('statUsers', allUsers.length);
+  // Üyeler sekmesi açıksa güncelle
+  const sec = document.getElementById('section-users');
+  if(sec && sec.style.display !== 'none') filterUsers();
+  // Yeni üye bildirimi
+  if(allUsers.length > prevCount && prevCount > 0) {
+    showNotificationBadge('users', allUsers.length - prevCount);
+    showToast('Yeni uye kayit oldu!', 'success');
+  }
+}
+
+function safeSet(id, val) {
+  const el = document.getElementById(id);
+  if(el) el.textContent = val;
+}
+function safeSetHTML(id, val) {
+  const el = document.getElementById(id);
+  if(el) el.innerHTML = val;
+}
+
+// Sidebar badge bildirimi
+function showNotificationBadge(section, count) {
+  const links = document.querySelectorAll('.sidebar-nav a');
+  links.forEach(a => {
+    if(a.getAttribute('onclick') && a.getAttribute('onclick').includes("'"+section+"'")) {
+      let badge = a.querySelector('.notif-badge');
+      if(!badge) {
+        badge = document.createElement('span');
+        badge.className = 'notif-badge';
+        badge.style.cssText = 'background:var(--red);color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:50px;margin-left:auto;font-family:Rajdhani,sans-serif;animation:pulse 1s ease infinite;';
+        a.appendChild(badge);
+      }
+      badge.textContent = count > 9 ? '9+' : count;
+      // 10 saniye sonra kaldır
+      setTimeout(() => { if(badge.parentNode) badge.remove(); }, 10000);
+    }
+  });
+}
+
+function updateLastRefreshIndicator() {
+  const el = document.getElementById('lastRefreshTime');
+  if(el) {
+    const now = new Date();
+    el.textContent = now.toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
+}
+
+// 30 saniyede bir otomatik yenile
+function startAutoUpdate() {
+  if(autoUpdateInterval) clearInterval(autoUpdateInterval);
+  autoUpdateInterval = setInterval(() => {
+    if(isTabActive) silentRefreshAll();
+  }, 30000);
+}
+
 // Saat
 setInterval(()=>{
   const n=new Date();
@@ -611,6 +778,7 @@ let allProducts=[], allCats=[], allSubCats=[], allPosts=[], allSales=[], allOrde
 async function loadAll(){
   await Promise.all([loadProducts(),loadCats(),loadSubCats(),loadPosts(),loadSalesData(),loadOrdersAdmin(),loadUsers(),loadReturnsAdmin()]);
   loadDashboard();
+  startAutoUpdate();
 }
 async function loadProducts(){
   allProducts=await fetch('/api/admin/products').then(r=>r.json());

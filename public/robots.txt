@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+Disallow: /hesabim
+Disallow: /sepet
+Disallow: /odeme
+
+Sitemap: https://merkezotoanahtar.com/sitemap.xml

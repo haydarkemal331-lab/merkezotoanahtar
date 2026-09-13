@@ -791,6 +791,27 @@ app.put('/api/auth/password', (req, res) => {
 // ─── SAYFA ROUTE'LARI (kullanıcı) ────────────────────────────────────────────
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+// Dinamik sitemap — ürünleri de içerir
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const products = db.getAllProductsAdmin();
+    const cats     = db.getCategories();
+    const base     = 'https://merkezotoanahtar.com';
+    const urls = [
+      `<url><loc>${base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+      ...cats.map(c => `<url><loc>${base}/kategori/${c.slug}</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>`),
+      ...products.map(p => `<url><loc>${base}/urun/${p.id}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`),
+      `<url><loc>${base}/gizlilik</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,
+      `<url><loc>${base}/mesafeli-satis</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`,
+      `<url><loc>${base}/teslimat-iade</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`
+    ];
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`;
+    res.header('Content-Type', 'application/xml');
+    res.send(xml);
+  } catch(e) {
+    res.sendFile(path.join(__dirname, 'public', 'sitemap.xml'));
+  }
+});
 app.get('/urun/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'product.html')));
 app.get('/kategori/:slug', (req, res) => res.sendFile(path.join(__dirname, 'public', 'category.html')));
 app.get('/paylasim/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'post.html')));
