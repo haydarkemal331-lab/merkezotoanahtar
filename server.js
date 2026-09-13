@@ -730,7 +730,7 @@ app.get('/api/admin/sms/status', requireAdmin, (req, res) => {
     configured: sms.isConfigured(),
     message: sms.isConfigured()
       ? 'SMS servisi aktif (Netgsm)'
-      : 'SMS servisi pasif. Railway Variables'a NETGSM_USER ve NETGSM_PASS ekleyin.'
+      : 'SMS servisi pasif. Railway Variables\'a NETGSM_USER ve NETGSM_PASS ekleyin.'
   });
 });
 
