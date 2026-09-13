@@ -47,7 +47,7 @@ const PORT = process.env.PORT || 3000;
 // Railway ve proxy arkasında çalışmak için
 app.set('trust proxy', 1);
 
-const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, 'public', 'uploads');
+const uploadDir = path.join(__dirname, 'public', 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
