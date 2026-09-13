@@ -47,7 +47,7 @@ const PORT = process.env.PORT || 3000;
 // Railway ve proxy arkasında çalışmak için
 app.set('trust proxy', 1);
 
-const uploadDir = path.join(__dirname, 'public', 'uploads');
+const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, 'public', 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
@@ -72,12 +72,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'merkez-oto-anahtar-secret-2024',
-  resave: false,
+  resave: true,
   saveUninitialized: false,
+  rolling: true,
   cookie: { 
-    maxAge: 24 * 60 * 60 * 1000,
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 gün
     secure: false,
-    sameSite: 'lax'
+    sameSite: 'lax',
+    httpOnly: true
   }
 }));
 app.use(passport.initialize());
