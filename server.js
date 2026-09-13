@@ -47,8 +47,20 @@ const PORT = process.env.PORT || 3000;
 // Railway ve proxy arkasında çalışmak için
 app.set('trust proxy', 1);
 
-const uploadDir = path.join(__dirname, 'public', 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+// ─── UPLOADS — Railway volume ile senkronize ─────────────────────────────────
+// Resimler /data/uploads'ta saklanır, public/uploads symlink gibi çalışır
+const PERM_UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
+const PUB_UPLOAD_DIR  = path.join(__dirname, 'public', 'uploads');
+
+// Kalıcı upload klasörünü oluştur
+if (!fs.existsSync(PERM_UPLOAD_DIR)) fs.mkdirSync(PERM_UPLOAD_DIR, { recursive: true });
+if (!fs.existsSync(PUB_UPLOAD_DIR))  fs.mkdirSync(PUB_UPLOAD_DIR,  { recursive: true });
+
+const uploadDir = PERM_UPLOAD_DIR; // Multer buraya yazar
+
+// Static serve — hem /data/uploads hem de public/uploads'tan sun
+app.use('/uploads', express.static(PERM_UPLOAD_DIR));
+app.use('/uploads', express.static(PUB_UPLOAD_DIR));
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),

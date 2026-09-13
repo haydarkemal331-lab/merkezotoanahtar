@@ -1,0 +1,261 @@
+{
+  "products": [
+    {
+      "id": 1,
+      "seri_no": "MOA-00001",
+      "name": "bmwm3",
+      "description": "dfsdfsdfdsfsdfsdfs",
+      "price": 1000,
+      "old_price": null,
+      "category_id": 7,
+      "sub_category_id": 2,
+      "image": "/uploads/1789043175729-337761425.jpeg",
+      "stock": 1,
+      "featured": 0,
+      "created_at": "2026-09-10T12:26:15.735Z"
+    },
+    {
+      "id": 2,
+      "seri_no": "MOA-00002",
+      "name": "audia3",
+      "description": "dfghdfgdggdfgfd",
+      "price": 2500,
+      "old_price": null,
+      "category_id": 7,
+      "sub_category_id": 3,
+      "image": "/uploads/1789057231431-398360253.jpeg",
+      "stock": 3,
+      "featured": 0,
+      "created_at": "2026-09-10T12:43:31.555Z"
+    }
+  ],
+  "admins": [
+    {
+      "id": 1,
+      "username": "admin",
+      "password": "$2a$10$zdQ08U1dLurB0un8EhojRub44BSAkByLENBJnCSqjVIjbolhqNbBe"
+    }
+  ],
+  "_meta": {
+    "lastProductId": 2,
+    "lastCategoryId": 7,
+    "lastNavCatId": 6,
+    "lastSidebarCatId": 0,
+    "lastSubCategoryId": 3,
+    "lastPostId": 1,
+    "lastSaleId": 6,
+    "lastUserId": 4,
+    "lastOrderId": 2
+  },
+  "subCategories": [
+    {
+      "id": 2,
+      "parent_id": 7,
+      "name": "bmw",
+      "slug": "bmw",
+      "visible": true
+    },
+    {
+      "id": 3,
+      "parent_id": 7,
+      "name": "audi",
+      "slug": "audi",
+      "visible": true
+    }
+  ],
+  "categories": [
+    {
+      "id": 2,
+      "name": "Anahtar Kılıfıları",
+      "slug": "Anahtar Kılıfıları",
+      "visible": true
+    },
+    {
+      "id": 3,
+      "name": "Kilit Sistemleri",
+      "slug": "kilit-sistemleri",
+      "visible": true
+    },
+    {
+      "id": 4,
+      "name": "Yedek Anahtarlar",
+      "slug": "yedek-anahtarlar",
+      "visible": true
+    },
+    {
+      "id": 5,
+      "name": "Transponder",
+      "slug": "transponder",
+      "visible": true
+    },
+    {
+      "id": 6,
+      "name": "Aksesuar",
+      "slug": "aksesuar",
+      "visible": true
+    },
+    {
+      "id": 7,
+      "name": "Oto Anahtar",
+      "slug": "oto-anahtar",
+      "visible": true
+    }
+  ],
+  "about": {
+    "title": "Hakkımızda",
+    "text": "Merkez Oto Anahtar olarak yıllardır sektörde hizmet veriyoruz.",
+    "image": "/uploads/1789057258841-526629719.jpeg"
+  },
+  "posts": [
+    {
+      "id": 1,
+      "title": "Kuruluş",
+      "content": "2026 ocak tarihinde ",
+      "image": "/uploads/1789060828699-284996329.jpeg",
+      "date": "10.09.2026",
+      "created_at": "2026-09-10T17:20:28.725Z"
+    }
+  ],
+  "sales": [],
+  "users": [
+    {
+      "id": 1,
+      "name": "Haydar Kemal İnal",
+      "email": "haydarkemalinal38@gmail.com",
+      "password": null,
+      "googleId": "104252542503596700746",
+      "phone": "05386470132",
+      "address": "hacet mah. yayla yolu cad. paşaaliler sk. no:10",
+      "city": "analnya",
+      "district": "analnya",
+      "zip": "07400",
+      "created_at": "2026-09-11T18:04:07.044Z"
+    },
+    {
+      "id": 2,
+      "name": "Haydar Kemal İnal 2316HayKem.",
+      "email": "haydarkml1002@gmail.com",
+      "password": null,
+      "googleId": "113186781342734507343",
+      "phone": "",
+      "address": "",
+      "city": "",
+      "district": "",
+      "zip": "",
+      "created_at": "2026-09-12T12:16:17.122Z"
+    },
+    {
+      "id": 3,
+      "name": "Haydar Kemal İnal",
+      "email": "haydarkemal331@gmail.com",
+      "password": "$2a$10$yRgwslo.6CD2ttB79zBVy.Y0DDvESLSix9hHb7iECBVytH73RQvz6",
+      "phone": "5386470132",
+      "address": "",
+      "city": "",
+      "district": "",
+      "zip": "",
+      "created_at": "2026-09-12T12:18:30.817Z"
+    },
+    {
+      "id": 4,
+      "name": "Haydar Kemal İnal",
+      "email": "merkezotoanahtar07@gmail.com",
+      "password": null,
+      "googleId": "116620238283187919146",
+      "phone": "",
+      "address": "",
+      "city": "",
+      "district": "",
+      "zip": "",
+      "created_at": "2026-09-12T12:52:25.078Z"
+    }
+  ],
+  "carts": [
+    {
+      "userId": 1,
+      "items": []
+    },
+    {
+      "userId": 3,
+      "items": [
+        {
+          "productId": 1,
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "userId": 4,
+      "items": [
+        {
+          "productId": 1,
+          "quantity": 1
+        }
+      ]
+    }
+  ],
+  "orders": [
+    {
+      "id": 1,
+      "orderNo": "ORD-2026-0001",
+      "userId": 1,
+      "status": "cancelled",
+      "subtotal": 2500,
+      "shippingFee": 0,
+      "total": 2500,
+      "address": "hacet mah. yayla yolu cad. paşaaliler sk. no:10",
+      "city": "analnya",
+      "district": "analnya",
+      "zip": "07400",
+      "phone": "05386470132",
+      "note": "",
+      "trackingNo": "",
+      "paymentMethod": "pending",
+      "paymentStatus": "pending",
+      "created_at": "2026-09-12T12:27:24.839Z",
+      "updated_at": "2026-09-12T12:28:12.972Z"
+    },
+    {
+      "id": 2,
+      "orderNo": "ORD-2026-0002",
+      "userId": 1,
+      "status": "cancelled",
+      "subtotal": 1000,
+      "shippingFee": 0,
+      "total": 1000,
+      "address": "hacet mah. yayla yolu cad. paşaaliler sk. no:10",
+      "city": "analnya",
+      "district": "analnya",
+      "zip": "07400",
+      "phone": "05386470132",
+      "note": "",
+      "trackingNo": "",
+      "paymentMethod": "pending",
+      "paymentStatus": "pending",
+      "created_at": "2026-09-12T13:10:12.077Z",
+      "updated_at": "2026-09-12T13:10:42.593Z"
+    }
+  ],
+  "orderItems": [
+    {
+      "id": 1,
+      "orderId": 1,
+      "productId": 2,
+      "seri_no": "MOA-00002",
+      "name": "audia3",
+      "price": 2500,
+      "quantity": 1,
+      "image": "/uploads/1789057231431-398360253.jpeg"
+    },
+    {
+      "id": 2,
+      "orderId": 2,
+      "productId": 1,
+      "seri_no": "MOA-00001",
+      "name": "bmwm3",
+      "price": 1000,
+      "quantity": 1,
+      "image": "/uploads/1789043175729-337761425.jpeg"
+    }
+  ]
+}
