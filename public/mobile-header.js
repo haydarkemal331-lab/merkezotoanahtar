@@ -253,6 +253,19 @@
   loadDrawerCategories();
   loadMobileCartCount();
 
+
+  // Pencere yeniden boyutlandırılınca header durumunu güncelle
+  window.addEventListener('resize', () => {
+    const header = document.getElementById('mobileHeader');
+    const overlay = document.getElementById('mobileSearchOverlay');
+    if (header) {
+      const show = window.innerWidth <= 768;
+      header.style.display = show ? 'flex' : 'none';
+      if (!show && overlay) overlay.classList.remove('active');
+      if (!show) closeDrawer && closeDrawer();
+    }
+  });
+
   // ESC ile kapat
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeDrawer();

@@ -393,6 +393,7 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; }
 .slider-slide-img {
   width: 45%; height: 380px;
   object-fit: cover; flex-shrink: 0;
+  position: relative; z-index: 1;
 }
 .slider-slide-no-img {
   width: 45%; height: 380px;
@@ -1325,7 +1326,7 @@ tbody td { padding: 13px 18px; font-size: 13px; color: #ccc; vertical-align: mid
 @media (max-width:600px) {
   .admin-layout { flex-direction:column; }
   .admin-sidebar { width:100%; }
-  .slider-slide-img,.slider-slide-no-img { display:none; }
+  /* slider-slide-img artık gizlenmiyor - mobil override ile yönetiliyor */
   .slider-slide::after,.slider-slide::before { display:none; }
   .slider-slide { background:linear-gradient(135deg,var(--bg3),var(--card)); }
   .slider-slide-info { padding:30px 24px; }
@@ -3081,4 +3082,86 @@ body.light-mode .theme-toggle .toggle-thumb { background: #f59e0b; transform: tr
   .product-card .price { font-size: 14px; }
   .card-cart-btn { font-size: 9px; padding: 6px 4px; }
   .mobile-logo-text { font-size: 13px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   RESPONSIVE DÜZELTMELER — En son eklendi, önceki kuralları override eder
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Slider resim her zaman görünür (eski display:none override) */
+.slider-slide-img {
+  display: block !important;
+  position: relative;
+  z-index: 1;
+}
+
+/* Masaüstünde mobil header kesinlikle gizli */
+@media (min-width: 769px) {
+  .mobile-header         { display: none !important; }
+  .drawer                { display: none !important; }
+  .drawer-overlay        { display: none !important; }
+  .mobile-search-overlay { display: none !important; }
+  /* Masaüstünde normal header görünür */
+  .header  { display: block !important; }
+  .nav     { display: block !important; }
+  .topbar  { display: block !important; }
+}
+
+/* Mobilde slider resim tam genişlik ve görünür */
+@media (max-width: 768px) {
+  .slider-slide-img {
+    display: block !important;
+    width: 100% !important;
+    height: 220px !important;
+    object-fit: cover;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .slider-slide-no-img { display: none !important; }
+  .slider-slide {
+    position: relative;
+    flex-direction: row; /* resim üstte değil, overlay ile */
+  }
+  .slider-slide::after {
+    background: linear-gradient(
+      0deg,
+      rgba(6,6,8,0.97) 0%,
+      rgba(6,6,8,0.65) 40%,
+      rgba(6,6,8,0.15) 70%,
+      transparent 100%
+    ) !important;
+    z-index: 2;
+  }
+  .slider-slide-info {
+    position: absolute !important;
+    bottom: 0; left: 0; right: 0;
+    padding: 12px 16px !important;
+    z-index: 3 !important;
+    flex: none !important;
+    width: 100%;
+  }
+
+  /* Masaüstü header/nav/topbar mobilde gizli */
+  .header  { display: none !important; }
+  .nav     { display: none !important; }
+  .topbar  { display: none !important; }
+
+  /* Mobil header görünür */
+  .mobile-header { display: flex !important; }
+}
+
+/* 600px altı — slider resim hala görünür */
+@media (max-width: 600px) {
+  .slider-slide-img {
+    display: block !important;
+    width: 100% !important;
+    height: 200px !important;
+  }
+}
+
+/* Tablet geçiş — 769px-900px arası header görünür */
+@media (min-width: 769px) and (max-width: 900px) {
+  .header .container { flex-wrap: wrap; }
+  .search-bar { order: 3; max-width: 100%; flex: 0 0 100%; }
 }
