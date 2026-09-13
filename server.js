@@ -47,7 +47,11 @@ const PORT = process.env.PORT || 3000;
 // Railway ve proxy arkasında çalışmak için
 app.set('trust proxy', 1);
 
-// ─── UPLOADS — Railway volume ile kalıcı storage ─────────────────────────────
+// ─── DATA DIR (Railway Volume) ─────────────────────────────────────────────
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
+// ─── UPLOADS ──────────────────────────────────────────────────────────────
 const PERM_UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 const PUB_UPLOAD_DIR  = path.join(__dirname, 'public', 'uploads');
 if (!fs.existsSync(PERM_UPLOAD_DIR)) fs.mkdirSync(PERM_UPLOAD_DIR, { recursive: true });
