@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
 const mailer = require('./mailer');
+const sms    = require('./sms');
 const { generateInvoice, saveInvoiceToDisk } = require('./invoice');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
@@ -382,12 +383,17 @@ app.post('/api/orders', requireUser, (req, res) => {
       shippingFee
     });
 
-    // Sipariş alındı maili gönder (arka planda)
+    // Sipariş alındı maili + SMS gönder (arka planda)
     const user = db.getUserById(req.session.userId);
     if (user) {
       mailer.sendOrderReceived(order, user).catch(e =>
         console.error('[MAIL] Sipariş alındı maili gönderilemedi:', e.message)
       );
+      if (order.phone) {
+        sms.sendOrderReceivedSMS(order, order.phone).catch(e =>
+          console.error('[SMS] Sipariş alındı SMS gönderilemedi:', e.message)
+        );
+      }
     }
 
     res.json({ success: true, order });
@@ -657,7 +663,137 @@ app.patch('/api/admin/returns/:id', requireAdmin, (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// ─── ADMIN KULLANICI YÖNETİMİ ────────────────────────────────────────────────
+// ─── ÜRÜN YORUMLARI ──────────────────────────────────────────────────────────
+
+app.get('/api/products/:id/reviews', (req, res) => {
+  const reviews = db.getReviews(req.params.id);
+  const stats   = db.getReviewStats(req.params.id);
+  const users   = reviews.map(r => {
+    const u = db.getUserById(r.userId);
+    return { ...r, userName: u ? u.name : 'Anonim' };
+  });
+  res.json({ reviews: users, stats });
+});
+
+app.post('/api/products/:id/reviews', requireUser, (req, res) => {
+  const { rating, comment } = req.body;
+  if (!rating) return res.status(400).json({ error: 'Puan zorunludur.' });
+  try {
+    const review = db.addReview({ userId: req.session.userId, productId: req.params.id, rating, comment });
+    res.json({ success: true, review, message: 'Yorumunuz onay bekliyor.' });
+  } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
+app.get('/api/admin/reviews', requireAdmin, (req, res) => {
+  res.json(db.getAllReviewsAdmin());
+});
+
+app.patch('/api/admin/reviews/:id/approve', requireAdmin, (req, res) => {
+  try { res.json({ success: true, review: db.approveReview(req.params.id) }); }
+  catch(e) { res.status(400).json({ error: e.message }); }
+});
+
+app.delete('/api/admin/reviews/:id', requireAdmin, (req, res) => {
+  db.deleteReview(req.params.id);
+  res.json({ success: true });
+});
+
+// ─── FAVORİLER ────────────────────────────────────────────────────────────────
+
+app.get('/api/favorites', requireUser, (req, res) => {
+  res.json(db.getFavorites(req.session.userId));
+});
+
+app.post('/api/favorites/:productId', requireUser, (req, res) => {
+  const result = db.toggleFavorite(req.session.userId, req.params.productId);
+  res.json({ success: true, ...result });
+});
+
+app.get('/api/favorites/:productId/check', (req, res) => {
+  if (!req.session?.userId) return res.json({ isFav: false });
+  res.json({ isFav: db.isFavorite(req.session.userId, req.params.productId) });
+});
+
+// ─── STOK BİLDİRİMİ ──────────────────────────────────────────────────────────
+
+app.post('/api/products/:id/notify', (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'E-posta gerekli.' });
+  const added = db.addStockNotify(email, req.params.id);
+  if (added) res.json({ success: true, message: 'Stok gelince e-posta gönderilecek.' });
+  else res.json({ success: true, message: 'Bu e-posta zaten kayıtlı.' });
+});
+
+// ─── SMS DURUM ───────────────────────────────────────────────────────────────
+app.get('/api/admin/sms/status', requireAdmin, (req, res) => {
+  res.json({
+    configured: sms.isConfigured(),
+    message: sms.isConfigured()
+      ? 'SMS servisi aktif (Netgsm)'
+      : 'SMS servisi pasif. Railway Variables'a NETGSM_USER ve NETGSM_PASS ekleyin.'
+  });
+});
+
+// ─── FATURA İNDİR ────────────────────────────────────────────────────────────
+app.get('/api/orders/:id/invoice', requireUser, async (req, res) => {
+  const order = db.getOrderById(req.params.id);
+  if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı.' });
+  if (order.userId !== req.session.userId && !req.session.adminId)
+    return res.status(403).json({ error: 'Erişim izniniz yok.' });
+  const user = db.getUserById(order.userId);
+  try {
+    const buffer = await generateInvoice(order, user || { name: 'Müşteri', email: '' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="fatura-${order.orderNo}.pdf"`);
+    res.send(buffer);
+  } catch(e) {
+    res.status(500).json({ error: 'Fatura oluşturulamadı.' });
+  }
+});
+
+// Admin fatura indir
+app.get('/api/admin/orders/:id/invoice', requireAdmin, async (req, res) => {
+  const order = db.getOrderById(req.params.id);
+  if (!order) return res.status(404).json({ error: 'Sipariş bulunamadı.' });
+  const user = db.getUserById(order.userId);
+  try {
+    const buffer = await generateInvoice(order, user || { name: 'Müşteri', email: '' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="fatura-${order.orderNo}.pdf"`);
+    res.send(buffer);
+  } catch(e) {
+    res.status(500).json({ error: 'Fatura oluşturulamadı.' });
+  }
+});
+
+// ─── KARGO TAKİP ─────────────────────────────────────────────────────────────
+
+app.get('/api/kargo/takip/:firma/:no', (req, res) => {
+  const { firma, no } = req.params;
+  const urls = {
+    yurtici: `https://www.yurticikargo.com/tr/online-islemler/gonderi-sorgula?code=${no}`,
+    aras:    `https://kargotakip.araskargo.com.tr/mainpage.aspx?TrackingNo=${no}`,
+    ptt:     `https://gonderitakip.ptt.gov.tr/Track/Verify?q=${no}`,
+    mng:     `https://www.mngkargo.com.tr/iletisim/gonderi-sorgula?trackno=${no}`,
+    ups:     `https://www.ups.com/track?tracknum=${no}`,
+    horoz:   `https://www.horozkargo.com/tr/gonderi-takip?takipno=${no}`
+  };
+  const url = urls[firma.toLowerCase()];
+  if (!url) return res.status(400).json({ error: 'Geçersiz kargo firması.' });
+  res.json({ url, trackingNo: no, firma });
+});
+
+// Kargo firmaları listesi
+app.get('/api/kargo/firmalar', (req, res) => {
+  res.json([
+    { id: 'yurtici', name: 'Yurtiçi Kargo',  logo: '📦', color: '#FF6B00' },
+    { id: 'aras',    name: 'Aras Kargo',     logo: '🚚', color: '#E30613' },
+    { id: 'ptt',     name: 'PTT Kargo',      logo: '📮', color: '#FFD700' },
+    { id: 'mng',     name: 'MNG Kargo',      logo: '🟡', color: '#FFC000' },
+    { id: 'ups',     name: 'UPS',            logo: '🟤', color: '#351C15' },
+    { id: 'horoz',   name: 'Horoz Lojistik', logo: '🐓', color: '#CC0000' }
+  ]);
+});
 
 app.get('/api/admin/users', requireAdmin, (req, res) => {
   const users = db.getUsers().map(u => {
@@ -710,6 +846,12 @@ app.post('/api/auth/register', async (req, res) => {
     mailer.sendWelcome(user).catch(e =>
       console.error('[MAIL] Hoşgeldin maili gönderilemedi:', e.message)
     );
+    // Hoşgeldin SMS
+    if (user.phone) {
+      sms.sendWelcomeSMS(user).catch(e =>
+        console.error('[SMS] Hoşgeldin SMS gönderilemedi:', e.message)
+      );
+    }
     // Admin'e yeni üye bildirimi
     mailer.sendMail({
       to: process.env.MAIL_USER || 'merkezotoanahtar07@gmail.com',

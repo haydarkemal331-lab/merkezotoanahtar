@@ -412,6 +412,7 @@
     <div id="orderDetailContent" style="padding:24px;"></div>
   </div>
 </div>
+<script src="/lang.js"></script>
 <script src="/mobile-header.js"></script>
 <script src="/app.js"></script>
 <script>
@@ -596,6 +597,18 @@ async function loadReturns() {
 let returnTargetOrderId = null;
 let returnTargetOrderNo = null;
 
+async function openKargoTakip(e, trackingStr) {
+  e.preventDefault();
+  if (!trackingStr) return;
+  var parts = trackingStr.includes(':') ? trackingStr.split(':') : ['yurtici', trackingStr];
+  var firma = parts[0];
+  var no    = parts.slice(1).join(':');
+  var res   = await fetch('/api/kargo/takip/'+firma+'/'+no);
+  var data  = await res.json();
+  if (data.url) window.open(data.url, '_blank');
+  else showToastMsg('Takip linki oluşturulamadı.', 'error');
+}
+
 function openReturnModal(orderId, orderNo) {
   returnTargetOrderId = orderId;
   returnTargetOrderNo = orderNo;
@@ -677,7 +690,23 @@ function renderOrders(orders, el) {
         </div>
         <div style="text-align:right;">
           <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--white);">₺${o.total.toLocaleString('tr-TR',{minimumFractionDigits:2})}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px;">Detay →</div>
+          <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap;">
+            <span style="font-size:11px;color:var(--muted);">Detay →</span>
+            ${o.status==='delivered' ? `
+              <a href="/api/orders/${o.id}/invoice" target="_blank" onclick="event.stopPropagation()"
+                style="font-size:10px;background:rgba(37,99,235,0.1);border:1px solid rgba(37,99,235,0.2);color:#60a5fa;padding:2px 8px;border-radius:5px;font-weight:700;text-decoration:none;">
+                📄 Fatura
+              </a>
+              <button onclick="event.stopPropagation();openReturnModal(${o.id},'${o.orderNo}')"
+                style="font-size:10px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2);color:#fbbf24;padding:2px 8px;border-radius:5px;font-weight:700;cursor:pointer;font-family:inherit;">
+                ↩ İade
+              </button>` : ''}
+            ${o.trackingNo ? `
+              <button onclick="event.stopPropagation();openKargoTakip(event,'${o.trackingNo}')"
+                style="font-size:10px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);color:#4ade80;padding:2px 8px;border-radius:5px;font-weight:700;cursor:pointer;font-family:inherit;">
+                📦 Kargo
+              </button>` : ''}
+          </div>
         </div>
       </div>`;
   }).join('');
@@ -852,5 +881,6 @@ function showAlert(el, msg, type) {
   setTimeout(() => el.style.display = 'none', 4000);
 }
 </script>
+<script src="/wa-support.js"></script>
 </body>
 </html>

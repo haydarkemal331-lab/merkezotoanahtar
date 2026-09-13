@@ -585,6 +585,124 @@ const db = {
     return readDB().admins.find(a => a.username === username) || null;
   },
 
+  // ─── ÜRÜN YORUMLARI ───────────────────────────────────────────────────────
+  getReviews(productId) {
+    const data = readDB();
+    return (data.reviews || [])
+      .filter(r => r.productId === parseInt(productId) && r.approved)
+      .sort((a, b) => b.id - a.id);
+  },
+
+  getReviewStats(productId) {
+    const reviews = this.getReviews(productId);
+    if (!reviews.length) return { avg: 0, count: 0, stars: [0,0,0,0,0] };
+    const stars = [0,0,0,0,0];
+    reviews.forEach(r => { if(r.rating>=1&&r.rating<=5) stars[r.rating-1]++; });
+    const avg = reviews.reduce((s,r) => s + r.rating, 0) / reviews.length;
+    return { avg: Math.round(avg*10)/10, count: reviews.length, stars };
+  },
+
+  getAllReviewsAdmin() {
+    const data = readDB();
+    return (data.reviews || []).sort((a,b) => b.id - a.id).map(r => ({
+      ...r,
+      user: (data.users||[]).find(u=>u.id===r.userId) || null,
+      product: this._enrichProduct(data.products.find(p=>p.id===r.productId)||{id:r.productId,name:'?'}, data)
+    }));
+  },
+
+  addReview({ userId, productId, rating, comment }) {
+    const data = readDB();
+    if (!data.reviews) data.reviews = [];
+    if (!data._meta.lastReviewId) data._meta.lastReviewId = 0;
+    // Aynı kullanıcı aynı ürüne 1 yorum
+    const existing = data.reviews.find(r => r.userId===parseInt(userId) && r.productId===parseInt(productId));
+    if (existing) throw new Error('Bu ürün için zaten yorum yaptınız.');
+    data._meta.lastReviewId++;
+    const review = {
+      id: data._meta.lastReviewId,
+      userId: parseInt(userId),
+      productId: parseInt(productId),
+      rating: Math.min(5, Math.max(1, parseInt(rating))),
+      comment: comment || '',
+      approved: false, // Admin onayı gerekiyor
+      created_at: new Date().toISOString()
+    };
+    data.reviews.push(review);
+    writeDB(data);
+    return review;
+  },
+
+  approveReview(id) {
+    const data = readDB();
+    const idx = (data.reviews||[]).findIndex(r=>r.id===parseInt(id));
+    if(idx===-1) throw new Error('Yorum bulunamadı.');
+    data.reviews[idx].approved = true;
+    writeDB(data);
+    return data.reviews[idx];
+  },
+
+  deleteReview(id) {
+    const data = readDB();
+    const review = (data.reviews||[]).find(r=>r.id===parseInt(id));
+    if(!review) return null;
+    data.reviews = data.reviews.filter(r=>r.id!==parseInt(id));
+    writeDB(data);
+    return review;
+  },
+
+  // ─── FAVORİLER ────────────────────────────────────────────────────────────
+  getFavorites(userId) {
+    const data = readDB();
+    const favIds = (data.favorites||[]).filter(f=>f.userId===parseInt(userId)).map(f=>f.productId);
+    return favIds.map(pid => {
+      const p = data.products.find(x=>x.id===pid);
+      return p ? this._enrichProduct(p, data) : null;
+    }).filter(Boolean);
+  },
+
+  toggleFavorite(userId, productId) {
+    const data = readDB();
+    if(!data.favorites) data.favorites = [];
+    const idx = data.favorites.findIndex(f=>f.userId===parseInt(userId)&&f.productId===parseInt(productId));
+    if(idx!==-1) {
+      data.favorites.splice(idx, 1);
+      writeDB(data);
+      return { added: false };
+    } else {
+      data.favorites.push({ userId: parseInt(userId), productId: parseInt(productId) });
+      writeDB(data);
+      return { added: true };
+    }
+  },
+
+  isFavorite(userId, productId) {
+    const data = readDB();
+    return !!(data.favorites||[]).find(f=>f.userId===parseInt(userId)&&f.productId===parseInt(productId));
+  },
+
+  // ─── STOK BİLDİRİM ───────────────────────────────────────────────────────
+  addStockNotify(email, productId) {
+    const data = readDB();
+    if(!data.stockNotify) data.stockNotify = [];
+    const exists = data.stockNotify.find(s=>s.email===email&&s.productId===parseInt(productId));
+    if(exists) return false;
+    data.stockNotify.push({ email, productId: parseInt(productId), created_at: new Date().toISOString() });
+    writeDB(data);
+    return true;
+  },
+
+  getStockNotifyList(productId) {
+    const data = readDB();
+    return (data.stockNotify||[]).filter(s=>s.productId===parseInt(productId));
+  },
+
+  removeStockNotify(email, productId) {
+    const data = readDB();
+    data.stockNotify = (data.stockNotify||[]).filter(s=>!(s.email===email&&s.productId===parseInt(productId)));
+    writeDB(data);
+  },
+
   // ─── ADRES YÖNETİMİ ───────────────────────────────────────────────────────
   getAddresses(userId) {
     const data = readDB();

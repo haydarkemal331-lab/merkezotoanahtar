@@ -3165,3 +3165,218 @@ body.light-mode .theme-toggle .toggle-thumb { background: #f59e0b; transform: tr
   .header .container { flex-wrap: wrap; }
   .search-bar { order: 3; max-width: 100%; flex: 0 0 100%; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   WHATSAPP CANLI DESTEK BUTONU
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.wa-float {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  z-index: 9990;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+}
+.wa-float-btn {
+  width: 58px; height: 58px; border-radius: 50%;
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 24px rgba(37,211,102,0.45);
+  cursor: pointer; border: none; font-size: 28px;
+  transition: all .3s cubic-bezier(.4,0,.2,1);
+  position: relative; overflow: hidden;
+  text-decoration: none;
+  animation: waPulse 3s ease infinite;
+}
+@keyframes waPulse {
+  0%,100% { box-shadow: 0 6px 24px rgba(37,211,102,0.45); }
+  50% { box-shadow: 0 6px 32px rgba(37,211,102,0.7), 0 0 0 8px rgba(37,211,102,0.15); }
+}
+.wa-float-btn:hover {
+  transform: scale(1.12) rotate(-5deg);
+  box-shadow: 0 8px 32px rgba(37,211,102,0.6);
+  animation: none;
+}
+.wa-float-btn::before {
+  content: '';
+  position: absolute; inset: 0; border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  transform: scale(0); transition: transform .3s ease;
+}
+.wa-float-btn:hover::before { transform: scale(1); }
+
+/* Bildirim balonu */
+.wa-float-bubble {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px 14px 4px 14px;
+  padding: 12px 16px;
+  max-width: 240px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+  animation: bubbleIn .4s cubic-bezier(.4,0,.2,1) both;
+  display: none;
+}
+@keyframes bubbleIn {
+  from { opacity:0; transform: scale(.8) translateY(10px); }
+  to   { opacity:1; transform: scale(1) translateY(0); }
+}
+.wa-float-bubble.visible { display: block; }
+.wa-bubble-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+}
+.wa-bubble-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.wa-bubble-name { font-size: 13px; font-weight: 700; color: var(--white); }
+.wa-bubble-status { font-size: 10px; color: #25D366; }
+.wa-bubble-msg {
+  font-size: 13px; color: var(--muted); line-height: 1.5;
+  margin-bottom: 10px;
+}
+.wa-bubble-cta {
+  display: block; width: 100%; padding: 9px;
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  color: #fff; border: none; border-radius: 8px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  text-align: center; text-decoration: none; font-family: inherit;
+  transition: opacity .2s;
+}
+.wa-bubble-cta:hover { opacity: .9; color: #fff; }
+.wa-bubble-close {
+  float: right; background: none; border: none;
+  color: var(--muted); font-size: 14px; cursor: pointer;
+  margin-left: 8px; line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .wa-float { bottom: 16px; right: 16px; }
+  .wa-float-btn { width: 52px; height: 52px; font-size: 24px; }
+  .wa-float-bubble { max-width: 200px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ÜRÜN YORUMLARI & PUANLAMA
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.review-section { margin: 8px 0 40px; animation: fadeUp .5s ease both; }
+.review-stats-box {
+  display: flex; align-items: center; gap: 32px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px 28px; margin-bottom: 20px;
+}
+.review-avg {
+  text-align: center; flex-shrink: 0;
+}
+.review-avg .big-score {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 52px; font-weight: 700; color: var(--white); line-height: 1;
+}
+.review-avg .stars-row { color: #fbbf24; font-size: 20px; margin: 4px 0; }
+.review-avg .count { font-size: 12px; color: var(--muted); }
+.review-bars { flex: 1; }
+.review-bar-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--muted); margin-bottom: 5px;
+}
+.review-bar-track {
+  flex: 1; height: 6px; background: var(--bg3);
+  border-radius: 3px; overflow: hidden;
+}
+.review-bar-fill {
+  height: 100%; background: #fbbf24; border-radius: 3px;
+  transition: width .5s ease;
+}
+
+.review-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 22px; margin-bottom: 12px;
+  animation: fadeUp .3s ease both;
+}
+.review-card-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 8px; gap: 12px; flex-wrap: wrap;
+}
+.review-user { font-size: 13px; font-weight: 700; color: var(--white); }
+.review-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.review-stars { color: #fbbf24; font-size: 15px; }
+.review-comment { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+.review-form-box {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 22px;
+  margin-top: 20px; position: relative;
+}
+.review-form-box::before {
+  content: ''; position: absolute; top:0; left:0; right:0; height:2px;
+  background: linear-gradient(90deg, #fbbf24, var(--red));
+}
+.star-picker { display: flex; gap: 6px; margin: 8px 0 16px; }
+.star-pick {
+  font-size: 28px; cursor: pointer;
+  filter: grayscale(1) opacity(.4);
+  transition: all .15s ease;
+}
+.star-pick.active, .star-pick:hover { filter: none; transform: scale(1.15); }
+
+/* ─── FAVORİ BUTONU ──────────────────────────────────────────────────────────── */
+.fav-btn {
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--card2); border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; cursor: pointer; transition: var(--trans);
+  flex-shrink: 0;
+}
+.fav-btn:hover { border-color: #f87171; background: rgba(239,68,68,0.08); }
+.fav-btn.active { border-color: #f87171; background: rgba(239,68,68,0.1); }
+.fav-btn.active::after { content: ''; }
+
+/* Ürün kartında favori */
+.product-card .fav-corner {
+  position: absolute; top: 8px; right: 8px;
+  width: 30px; height: 30px; border-radius: 8px;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; cursor: pointer; z-index: 3;
+  transition: var(--trans); border: 1px solid rgba(255,255,255,0.1);
+}
+.product-card .fav-corner:hover { background: rgba(239,68,68,0.7); }
+.product-card .fav-corner.fav-active { background: rgba(239,68,68,0.8); }
+
+/* ─── STOK BİLDİRİM ──────────────────────────────────────────────────────────── */
+.stock-notify-box {
+  background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.2);
+  border-radius: 10px; padding: 16px 20px; margin-top: 12px;
+}
+.stock-notify-box p { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+.stock-notify-row { display: flex; gap: 8px; }
+.stock-notify-row input {
+  flex: 1; padding: 10px 14px; background: var(--bg3);
+  border: 1.5px solid var(--border); border-radius: 9px;
+  font-size: 13px; color: var(--text); outline: none; font-family: inherit;
+}
+.stock-notify-row input:focus { border-color: #fbbf24; }
+.stock-notify-row button {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #1a1a2e; padding: 10px 18px; border-radius: 9px;
+  font-size: 13px; font-weight: 700; border: none;
+  cursor: pointer; font-family: inherit; transition: var(--trans);
+  white-space: nowrap;
+}
+.stock-notify-row button:hover { transform: translateY(-1px); }
+
+/* ─── FAVORİLERİM SAYFASI ────────────────────────────────────────────────────── */
+.favorites-empty {
+  text-align: center; padding: 60px 20px; color: var(--muted);
+}
+.favorites-empty .icon { font-size: 56px; opacity: .2; margin-bottom: 16px; }
+
+/* ─── DİL TOGGLE BUTONU ──────────────────────────────────────────────────────── */
+.lang-toggle-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 10px;
+  font-size: 12px; font-weight: 700; color: var(--muted);
+  cursor: pointer; transition: var(--trans); font-family: inherit;
+  white-space: nowrap;
+}
+.lang-toggle-btn:hover { border-color: var(--blue-mid); color: var(--text); }

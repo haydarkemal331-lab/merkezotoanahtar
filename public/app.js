@@ -737,142 +737,120 @@ if (PAGE === 'product') {
   async function loadProductDetail() {
     loadNav();
     loadCartCount();
-    const res = await fetch(`/api/products/${productId}`);
+    const res = await fetch('/api/products/' + productId);
     if (!res.ok) {
-      document.getElementById('productDetail').innerHTML = `
-        <div class="empty-state"><div class="icon">😕</div>
-        <h3>Ürün bulunamadı</h3>
-        <p><a href="/" style="color:var(--red);">Ana sayfaya dön</a></p></div>`;
+      document.getElementById('productDetail').innerHTML =
+        '<div class="empty-state"><div class="icon">😕</div><h3>Ürün bulunamadı</h3><p><a href="/" style="color:var(--red);">Ana sayfaya dön</a></p></div>';
       return;
     }
     const p = await res.json();
-    document.title = `${p.name} - Merkez Oto Anahtar`;
+    document.title = p.name + ' - Merkez Oto Anahtar';
 
     const breadCatEl  = document.getElementById('breadCat');
     const breadNameEl = document.getElementById('breadName');
     if (breadCatEl) {
       breadCatEl.innerHTML = p.category_slug
-        ? `<a href="/kategori/${p.category_slug}" style="color:var(--blue-light);">${p.category_name}</a>`
+        ? '<a href="/kategori/'+p.category_slug+'" style="color:var(--blue-light);">'+p.category_name+'</a>'
         : (p.category_name || 'Ürünler');
     }
     if (breadNameEl) breadNameEl.textContent = p.name;
 
-    const seriNo  = p.seri_no || ('MOA-' + String(p.id).padStart(5, '0'));
+    const seriNo   = p.seri_no || ('MOA-' + String(p.id).padStart(5,'0'));
     const discount = p.old_price && p.old_price > p.price
       ? Math.round((1 - p.price / p.old_price) * 100) : 0;
 
-    const waMsg = [
-      `Merhaba, aşağıdaki ürünü satın almak istiyorum:`,
-      ``, `📦 Ürün: ${p.name}`,
-      `🔢 Seri No: ${seriNo}`,
-      `💰 Fiyat: ${formatPrice(p.price)}`,
-      ``, `Bilgi verir misiniz?`
-    ].join('\n');
-    const waUrl = `https://wa.me/905386470132?text=${encodeURIComponent(waMsg)}`;
+    const waMsg = 'Merhaba, asagidaki urunu satin almak istiyorum:\n\n' +
+      '📦 Urun: ' + p.name + '\n' +
+      '🔢 Seri No: ' + seriNo + '\n' +
+      '💰 Fiyat: ' + formatPrice(p.price) + '\n\nBilgi verir misiniz?';
+    const waUrl = 'https://wa.me/905386470132?text=' + encodeURIComponent(waMsg);
 
     const relCatLinkEl = document.getElementById('relatedCatLink');
-    if (relCatLinkEl && p.category_slug) relCatLinkEl.href = `/kategori/${p.category_slug}`;
+    if (relCatLinkEl && p.category_slug) relCatLinkEl.href = '/kategori/' + p.category_slug;
 
-    document.getElementById('productDetail').innerHTML = `
-      <div class="product-page-hero">
-        <div class="product-hero-top">
+    // Auth ve favori kontrolü
+    const authData = await fetch('/api/auth/me').then(r=>r.json());
+    const isLoggedIn = authData.loggedIn;
+    const isFav = isLoggedIn ? await checkFav(p.id) : false;
 
-          <!-- Sol: Görsel -->
-          <div class="product-gallery">
-            ${p.image
-              ? `<img class="product-gallery-main" src="${p.image}" alt="${p.name}"/>`
-              : `<div class="product-gallery-no-img">🔑</div>`}
-            <div class="product-serial-badge">
-              <span>SERİ NO</span>
-              <strong>${seriNo}</strong>
-            </div>
-            ${discount > 0 ? `
-              <div style="position:absolute;top:16px;right:16px;background:var(--red);color:#fff;
-                font-size:14px;font-weight:800;padding:6px 14px;border-radius:8px;
-                box-shadow:0 4px 16px var(--red-glow);z-index:2;font-family:'Rajdhani',sans-serif;letter-spacing:.5px;">
-                -%${discount}
-              </div>` : ''}
-          </div>
+    const discountBadge = discount > 0
+      ? '<div style="position:absolute;top:16px;right:16px;background:var(--red);color:#fff;font-size:14px;font-weight:800;padding:6px 14px;border-radius:8px;box-shadow:0 4px 16px var(--red-glow);z-index:2;font-family:Rajdhani,sans-serif;letter-spacing:.5px;">-%' + discount + '</div>'
+      : '';
 
-          <!-- Sağ: Bilgi paneli -->
-          <div class="product-info-panel">
-            <div>
-              <div class="product-breadcrumb-inline">
-                <a href="/">Ana Sayfa</a><span>›</span>
-                ${p.category_slug
-                  ? `<a href="/kategori/${p.category_slug}">${p.category_name}</a>`
-                  : `<span>${p.category_name || 'Ürün'}</span>`}
-                ${p.sub_category_name ? `<span>›</span><span>${p.sub_category_name}</span>` : ''}
-              </div>
+    const stockNotifyBox = p.stock <= 0
+      ? '<div class="stock-notify-box"><p>📧 Stok geldiğinde haberdar olmak ister misiniz?</p><div class="stock-notify-row"><input type="email" id="notifyEmail" placeholder="E-posta adresiniz" value="'+(isLoggedIn&&authData.user?authData.user.email:'')+'"/><button onclick="submitStockNotify('+p.id+')">🔔 Haber Ver</button></div></div>'
+      : '';
 
-              <div style="margin-bottom:12px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
-                ${p.category_name ? `<span class="product-cat-badge">🏷️ ${p.category_name}</span>` : ''}
-                ${p.sub_category_name ? `<span class="product-sub-badge">${p.sub_category_name}</span>` : ''}
-              </div>
+    const cartBtn = p.stock > 0
+      ? '<button class="product-cart-btn" id="detailCartBtn" onclick="addToCartFromDetail('+p.id+')" style="flex:1;"><span style="font-size:20px;">🛒</span><div><div>Sepete Ekle</div><span class="btn-sub">Güvenli satın al</span></div></button>'
+      : '';
 
-              <h1 class="product-title">${p.name}</h1>
+    const favBtnHtml = '<button class="fav-btn'+(isFav?' active':'')+'" id="favBtn" onclick="toggleFav('+p.id+',this)" title="'+(isFav?'Favorilerden Çıkar':'Favorilere Ekle')+'">'+(isFav?'❤️':'🤍')+'</button>';
 
-              <div class="product-price-box">
-                <div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;">
-                  <div class="product-price-main">${formatPrice(p.price)}</div>
-                  ${discount > 0 ? `<span class="product-price-discount">-%${discount}</span>` : ''}
-                </div>
-                ${p.old_price ? `<div class="product-price-old">İndirim öncesi: ${formatPrice(p.old_price)}</div>` : ''}
-                <div class="product-price-usd">
-                  <span id="productPriceUsd" data-try="${p.price}">≈ dolar hesaplanıyor...</span>
-                  <span style="color:var(--muted);margin-left:4px;">• Anlık kur</span>
-                </div>
-              </div>
+    document.getElementById('productDetail').innerHTML =
+      '<div class="product-page-hero">' +
+        '<div class="product-hero-top">' +
+          '<div class="product-gallery">' +
+            (p.image ? '<img class="product-gallery-main" src="'+p.image+'" alt="'+p.name+'"/>' : '<div class="product-gallery-no-img">🔑</div>') +
+            '<div class="product-serial-badge"><span>SERİ NO</span><strong>'+seriNo+'</strong></div>' +
+            discountBadge +
+          '</div>' +
+          '<div class="product-info-panel">' +
+            '<div>' +
+              '<div class="product-breadcrumb-inline"><a href="/">Ana Sayfa</a><span>›</span>' +
+                (p.category_slug?'<a href="/kategori/'+p.category_slug+'">'+p.category_name+'</a>':'<span>'+(p.category_name||'Ürün')+'</span>') +
+                (p.sub_category_name?'<span>›</span><span>'+p.sub_category_name+'</span>':'')+
+              '</div>' +
+              '<div style="margin-bottom:12px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;">' +
+                (p.category_name?'<span class="product-cat-badge">🏷️ '+p.category_name+'</span>':'')+
+                (p.sub_category_name?'<span class="product-sub-badge">'+p.sub_category_name+'</span>':'')+
+              '</div>' +
+              '<h1 class="product-title">'+p.name+'</h1>' +
+              '<div class="product-price-box">' +
+                '<div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;">' +
+                  '<div class="product-price-main">'+formatPrice(p.price)+'</div>' +
+                  (discount>0?'<span class="product-price-discount">-%'+discount+'</span>':'')+
+                '</div>' +
+                (p.old_price?'<div class="product-price-old">İndirim öncesi: '+formatPrice(p.old_price)+'</div>':'')+
+                '<div class="product-price-usd"><span id="productPriceUsd" data-try="'+p.price+'">≈ dolar hesaplanıyor...</span><span style="color:var(--muted);margin-left:4px;">• Anlık kur</span></div>' +
+              '</div>' +
+              '<div class="product-stock-row">' +
+                '<div class="product-stock-dot '+(p.stock>0?'stock-dot-in':'stock-dot-out')+'"></div>' +
+                '<span class="product-stock-text '+(p.stock>0?'stock-in-text':'stock-out-text')+'">' +
+                  (p.stock>0?'Stokta Var — '+p.stock+' adet':'Stok Tükendi')+
+                '</span>' +
+              '</div>' +
+              (p.description?'<div class="product-desc">'+p.description+'</div>':'')+
+              stockNotifyBox +
+            '</div>' +
+            '<div class="product-actions" style="display:flex;gap:10px;align-items:stretch;">' +
+              cartBtn + favBtnHtml +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="product-info-bottom">' +
+          '<div class="product-info-tag"><span class="tag-icon">🛡️</span><div class="tag-text"><strong>6 Ay Garanti</strong><span>Orijinal kalite</span></div></div>' +
+          '<div class="product-info-tag"><span class="tag-icon">⚡</span><div class="tag-text"><strong>Hızlı Teslimat</strong><span>Aynı gün</span></div></div>' +
+          '<div class="product-info-tag"><span class="tag-icon">🔑</span><div class="tag-text"><strong>Yerinde Hizmet</strong><span>Kapıda kopyalama</span></div></div>' +
+        '</div>' +
+      '</div>';
 
-              <div class="product-stock-row">
-                <div class="product-stock-dot ${p.stock > 0 ? 'stock-dot-in' : 'stock-dot-out'}"></div>
-                <span class="product-stock-text ${p.stock > 0 ? 'stock-in-text' : 'stock-out-text'}">
-                  ${p.stock > 0 ? `Stokta Var — ${p.stock} adet` : 'Stok Tükendi'}
-                </span>
-              </div>
-
-              ${p.description ? `<div class="product-desc">${p.description}</div>` : ''}
-            </div>
-
-            <div class="product-actions">
-              <button class="product-cart-btn" id="detailCartBtn" onclick="addToCartFromDetail(${p.id})">
-                <span style="font-size:20px;">🛒</span>
-                <div>
-                  <div>Sepete Ekle</div>
-                  <span class="btn-sub">Giriş yaparak güvenli satın al</span>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Alt bilgi bandı -->
-        <div class="product-info-bottom">
-          <div class="product-info-tag">
-            <span class="tag-icon">🛡️</span>
-            <div class="tag-text"><strong>6 Ay Garanti</strong><span>Orijinal kalite güvencesi</span></div>
-          </div>
-          <div class="product-info-tag">
-            <span class="tag-icon">⚡</span>
-            <div class="tag-text"><strong>Hızlı Teslimat</strong><span>Aynı gün programlama</span></div>
-          </div>
-          <div class="product-info-tag">
-            <span class="tag-icon">🔑</span>
-            <div class="tag-text"><strong>Yerinde Hizmet</strong><span>Kapıda anahtar kopyalama</span></div>
-          </div>
-        </div>
-      </div>`;
-
-    // USD fiyatını güncelle
     if (lastUsdRate) {
       const usdEl = document.getElementById('productPriceUsd');
       if (usdEl) usdEl.textContent = '≈ $' + (p.price / lastUsdRate).toFixed(2);
     }
 
+    // Yorumları yükle
+    const reviewData = await loadReviews(p.id);
+    const reviewDiv = document.createElement('div');
+    reviewDiv.innerHTML = renderReviewSection(p.id, reviewData, isLoggedIn);
+    const relSec = document.getElementById('relatedSection');
+    if (relSec) relSec.insertAdjacentElement('beforebegin', reviewDiv);
+
     // İlgili ürünler
     if (p.category_slug) {
-      const relRes  = await fetch(`/api/products?category=${p.category_slug}`);
-      const related = (await relRes.json()).filter(r => r.id !== p.id).slice(0, 4);
+      const relRes  = await fetch('/api/products?category=' + p.category_slug);
+      const related = (await relRes.json()).filter(r => r.id !== p.id).slice(0,4);
       if (related.length > 0) {
         const sec  = document.getElementById('relatedSection');
         const grid = document.getElementById('relatedGrid');
@@ -884,6 +862,144 @@ if (PAGE === 'product') {
 
   loadProductDetail();
 }
+
+// ─── FAVORİ FONKSİYONLARI ────────────────────────────────────────────────────
+async function toggleFav(productId, btn) {
+  const res  = await fetch(`/api/favorites/${productId}`, { method: 'POST' });
+  if (res.status === 401) {
+    showToast('Favorilere eklemek için giriş yapın.', 'error');
+    return;
+  }
+  const data = await res.json();
+  if (btn) {
+    btn.classList.toggle('fav-active', data.added);
+    btn.classList.toggle('active', data.added);
+    btn.title = data.added ? 'Favorilerden Çıkar' : 'Favorilere Ekle';
+    btn.innerHTML = data.added ? '❤️' : '🤍';
+  }
+  showToast(data.added ? '❤️ Favorilere eklendi!' : 'Favorilerden çıkarıldı.', data.added ? 'success' : '');
+}
+
+async function checkFav(productId) {
+  const res  = await fetch(`/api/favorites/${productId}/check`);
+  const data = await res.json();
+  return data.isFav;
+}
+
+// ─── YORUM FONKSİYONLARI ─────────────────────────────────────────────────────
+function renderStars(rating, size = 16) {
+  return [1,2,3,4,5].map(i =>
+    `<span style="color:${i<=rating?'#fbbf24':'#374151'};font-size:${size}px;">★</span>`
+  ).join('');
+}
+
+async function loadReviews(productId) {
+  const res  = await fetch(`/api/products/${productId}/reviews`);
+  const data = await res.json();
+  return data;
+}
+
+function renderReviewSection(productId, reviewData, isLoggedIn) {
+  const { reviews, stats } = reviewData;
+  const pct = (n) => stats.count ? Math.round((n/stats.count)*100) : 0;
+
+  return `
+    <div class="review-section">
+      <div class="section-header" style="margin-bottom:20px;">
+        <h2><span>⭐</span> Ürün Değerlendirmeleri</h2>
+      </div>
+
+      <!-- İstatistik kutusu -->
+      <div class="review-stats-box">
+        <div class="review-avg">
+          <div class="big-score">${stats.avg || '—'}</div>
+          <div class="stars-row">${renderStars(Math.round(stats.avg), 18)}</div>
+          <div class="count">${stats.count} değerlendirme</div>
+        </div>
+        <div class="review-bars">
+          ${[5,4,3,2,1].map(i => `
+            <div class="review-bar-row">
+              <span style="width:14px;text-align:right;">${i}</span>
+              <span style="color:#fbbf24;">★</span>
+              <div class="review-bar-track">
+                <div class="review-bar-fill" style="width:${pct(stats.stars[i-1])}%"></div>
+              </div>
+              <span style="width:28px;">${stats.stars[i-1]}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Yorum listesi -->
+      ${reviews.length ? reviews.map(r => `
+        <div class="review-card">
+          <div class="review-card-header">
+            <div>
+              <div class="review-user">👤 ${r.userName}</div>
+              <div class="review-date">${new Date(r.created_at).toLocaleDateString('tr-TR')}</div>
+            </div>
+            <div class="review-stars">${renderStars(r.rating, 15)}</div>
+          </div>
+          ${r.comment ? `<div class="review-comment">${r.comment}</div>` : ''}
+        </div>`).join('') :
+        `<div style="text-align:center;padding:32px;color:var(--muted);">
+          <div style="font-size:36px;opacity:.2;margin-bottom:10px;">💬</div>
+          <p>Henüz değerlendirme yok. İlk değerlendiren siz olun!</p>
+        </div>`}
+
+      <!-- Yorum formu -->
+      ${isLoggedIn ? `
+        <div class="review-form-box">
+          <h3 style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Değerlendirme Yaz</h3>
+          <div class="star-picker" id="starPicker" data-rating="0">
+            ${[1,2,3,4,5].map(i => `<span class="star-pick" data-val="${i}" onclick="pickStar(${i})">★</span>`).join('')}
+          </div>
+          <textarea id="reviewComment" placeholder="Ürün hakkında görüşlerinizi yazın..." style="width:100%;padding:11px 14px;background:var(--bg3);border:1.5px solid var(--border);border-radius:9px;font-size:14px;color:var(--text);outline:none;font-family:inherit;resize:vertical;min-height:90px;margin-bottom:12px;"></textarea>
+          <button onclick="submitReview(${productId})" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1a1a2e;padding:11px 24px;border-radius:9px;font-size:14px;font-weight:700;border:none;cursor:pointer;font-family:inherit;">⭐ Değerlendirme Gönder</button>
+        </div>` :
+        `<div style="text-align:center;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-top:16px;">
+          <a href="/giris" style="color:var(--blue-light);font-weight:700;">Giriş yapın</a>
+          <span style="color:var(--muted);"> ve ürünü değerlendirin.</span>
+        </div>`}
+    </div>`;
+}
+
+window.pickStar = function(val) {
+  document.getElementById('starPicker')?.setAttribute('data-rating', val);
+  document.querySelectorAll('.star-pick').forEach((s, i) => {
+    s.classList.toggle('active', i < val);
+  });
+};
+
+window.submitReview = async function(productId) {
+  const rating  = parseInt(document.getElementById('starPicker')?.getAttribute('data-rating') || '0');
+  const comment = document.getElementById('reviewComment')?.value.trim();
+  if (!rating) { showToast('Lütfen puan seçin.', 'error'); return; }
+  const res  = await fetch(`/api/products/${productId}/reviews`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rating, comment })
+  });
+  const data = await res.json();
+  if (data.success) {
+    showToast('✅ Yorumunuz onay bekliyor!', 'success');
+    document.getElementById('reviewComment').value = '';
+    pickStar(0);
+  } else showToast(data.error || 'Hata.', 'error');
+};
+
+// ─── STOK BİLDİRİM ───────────────────────────────────────────────────────────
+window.submitStockNotify = async function(productId) {
+  const email = document.getElementById('notifyEmail')?.value.trim();
+  if (!email) { showToast('E-posta girin.', 'error'); return; }
+  const res  = await fetch(`/api/products/${productId}/notify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+  const data = await res.json();
+  if (data.success) showToast('📧 ' + data.message, 'success');
+  else showToast(data.error || 'Hata.', 'error');
+};
 
 // addToCartFromDetail - ürün detay sayfası için
 window.addToCartFromDetail = async function(productId) {

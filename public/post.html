@@ -21,6 +21,9 @@
     </div>
     <div style="display:flex;align-items:center;gap:14px;">
       <a href="https://wa.me/905386470132" target="_blank" style="color:#25D366;font-weight:700;font-size:12px;">💬 WhatsApp</a>
+      <button class="lang-toggle-btn" id="langToggleBtn" onclick="toggleLang()" title="Türkçe/English">
+        <span>🇬🇧</span> EN
+      </button>
       <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle" title="Gündüz/Gece modu">
         <div class="toggle-track"><div class="toggle-thumb"></div></div>
         <span id="themeLabel">🌙 Gece</span>
@@ -121,7 +124,9 @@
 </footer>
 
 <div class="toast-container" id="toastContainer"></div>
+<script src="/lang.js"></script>
 <script src="/mobile-header.js"></script>
 <script src="/app.js"></script>
+<script src="/wa-support.js"></script>
 </body>
 </html>
