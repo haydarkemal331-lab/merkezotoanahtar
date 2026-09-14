@@ -687,6 +687,43 @@ app.patch('/api/admin/returns/:id', requireAdmin, (req, res) => {
 
 // ─── ÜRÜN YORUMLARI ──────────────────────────────────────────────────────────
 
+// ─── ÜRÜN RESİM GALERİSİ ─────────────────────────────────────────────────────
+
+// Ürünün tüm resimlerini getir
+app.get('/api/products/:id/images', (req, res) => {
+  res.json(db.getProductImages(req.params.id));
+});
+
+// Çoklu resim yükle
+app.post('/api/admin/products/:id/images', requireAdmin, upload.array('images', 10), (req, res) => {
+  if (!req.files || !req.files.length)
+    return res.status(400).json({ error: 'En az bir resim gerekli.' });
+  const existing = db.getProductImages(req.params.id);
+  const added = req.files.map((file, idx) => {
+    const url = '/uploads/' + file.filename;
+    return db.addProductImage(req.params.id, url, idx === 0 && existing.length === 0);
+  });
+  res.json({ success: true, images: added });
+});
+
+// Tek resim sil
+app.delete('/api/admin/products/:id/images/:imageId', requireAdmin, (req, res) => {
+  const img = db.deleteProductImage(req.params.imageId);
+  if (!img) return res.status(404).json({ error: 'Resim bulunamadi.' });
+  // Dosya hem kalıcı klasörde hem public/uploads altında olabilir, ikisini de dene
+  const filePath1 = path.join(PERM_UPLOAD_DIR, path.basename(img.url));
+  const filePath2 = path.join(__dirname, 'public', img.url);
+  if (fs.existsSync(filePath1)) fs.unlinkSync(filePath1);
+  else if (fs.existsSync(filePath2)) fs.unlinkSync(filePath2);
+  res.json({ success: true });
+});
+
+// Birincil resim yap
+app.patch('/api/admin/products/:id/images/:imageId/primary', requireAdmin, (req, res) => {
+  db.setPrimaryImage(req.params.imageId, req.params.id);
+  res.json({ success: true });
+});
+
 app.get('/api/products/:id/reviews', (req, res) => {
   const reviews = db.getReviews(req.params.id);
   const stats   = db.getReviewStats(req.params.id);

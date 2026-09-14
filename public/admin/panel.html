@@ -451,11 +451,14 @@
         </div>
         <div class="form-group" style="grid-column:1/-1"><label>Açıklama</label><textarea id="pDesc"></textarea></div>
         <div class="form-group" style="grid-column:1/-1">
-          <label>Görsel</label>
-          <div class="img-preview-wrap">
-            <div class="placeholder" id="imgPlaceholder">Görsel seçin</div>
-            <img id="imgPreview" style="display:none;max-height:120px;margin:0 auto;border-radius:6px;"/>
-            <input type="file" id="pImage" accept="image/*" onchange="previewImage(this)"/>
+          <label>Görseller (Ana görsel + Ek görseller)</label>
+          <!-- Mevcut resimler -->
+          <div id="existingImagesRow" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
+          <!-- Yeni resim yükleme -->
+          <div class="img-preview-wrap" id="multiImgWrap" style="min-height:70px;">
+            <div class="placeholder" id="imgPlaceholder">📷 Birden fazla resim seçebilirsiniz (max 10)</div>
+            <div id="newImgPreviews" style="display:flex;flex-wrap:wrap;gap:6px;padding:4px;"></div>
+            <input type="file" id="pImage" accept="image/*" multiple onchange="previewMultiImages(this)"/>
           </div>
         </div>
       </div>
@@ -1073,10 +1076,11 @@ function openAddProductModal(){
   document.getElementById('productModalTitle').textContent='Yeni Urun Ekle';
   document.getElementById('editProductId').value='';
   document.getElementById('productForm').reset();
-  document.getElementById('imgPreview').style.display='none';
   document.getElementById('imgPlaceholder').style.display='block';
   document.getElementById('pImage').value='';
   document.getElementById('pSubCategory').innerHTML='<option value="">— Sec —</option>';
+  const np = document.getElementById('newImgPreviews'); if(np) np.innerHTML='';
+  const er = document.getElementById('existingImagesRow'); if(er) er.innerHTML='';
   document.getElementById('productModal').classList.remove('hidden');
 }
 function openEditProductModal(id){
@@ -1098,10 +1102,65 @@ function openEditProductModal(id){
   if(p.image){prev.src=p.image;prev.style.display='block';document.getElementById('imgPlaceholder').style.display='none';}
   else{prev.style.display='none';document.getElementById('imgPlaceholder').style.display='block';}
   document.getElementById('pImage').value='';
+  const np = document.getElementById('newImgPreviews'); if(np) np.innerHTML='';
+  document.getElementById('imgPlaceholder').style.display='block';
+  loadExistingImages(p.id);
   document.getElementById('productModal').classList.remove('hidden');
 }
 function closeProductModal(){document.getElementById('productModal').classList.add('hidden');}
-function previewImage(input){if(input.files&&input.files[0]){const r=new FileReader();r.onload=e=>{const i=document.getElementById('imgPreview');i.src=e.target.result;i.style.display='block';document.getElementById('imgPlaceholder').style.display='none';};r.readAsDataURL(input.files[0]);}}
+function previewImage(input){if(input.files&&input.files[0]){const r=new FileReader();r.onload=e=>{const i=document.getElementById('imgPreview');if(i){i.src=e.target.result;i.style.display='block';}document.getElementById('imgPlaceholder').style.display='none';};r.readAsDataURL(input.files[0]);}}
+
+function previewMultiImages(input) {
+  const preview = document.getElementById('newImgPreviews');
+  const placeholder = document.getElementById('imgPlaceholder');
+  if(!preview) return;
+  preview.innerHTML = '';
+  if(input.files && input.files.length > 0) {
+    placeholder.style.display = 'none';
+    Array.from(input.files).forEach((file, idx) => {
+      const r = new FileReader();
+      r.onload = function(e) {
+        const div = document.createElement('div');
+        div.style.cssText = 'position:relative;display:inline-block;';
+        div.innerHTML = '<img src="'+e.target.result+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--border);"/>'
+          +(idx===0?'<span style="position:absolute;top:2px;left:2px;background:var(--red);color:#fff;font-size:8px;font-weight:700;padding:1px 5px;border-radius:4px;">ANA</span>':'');
+        preview.appendChild(div);
+      };
+      r.readAsDataURL(file);
+    });
+  } else {
+    placeholder.style.display = 'block';
+  }
+}
+
+async function loadExistingImages(productId) {
+  const row = document.getElementById('existingImagesRow');
+  if(!row || !productId) { if(row) row.innerHTML=''; return; }
+  const images = await fetch('/api/products/'+productId+'/images').then(r=>r.json()).catch(()=>[]);
+  if(!images.length) { row.innerHTML=''; return; }
+  row.innerHTML = images.map(img =>
+    '<div style="position:relative;display:inline-block;" id="imgCard-'+img.id+'">' +
+      '<img src="'+img.url+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:2px solid '+(img.isPrimary?'var(--red)':'var(--border)')+';cursor:pointer;" onclick="setImgPrimary('+img.id+','+productId+')" title="Birincil yap"/>' +
+      (img.isPrimary?'<span style="position:absolute;top:2px;left:2px;background:var(--red);color:#fff;font-size:8px;font-weight:700;padding:1px 5px;border-radius:4px;">ANA</span>':'')+
+      '<button onclick="deleteProductImg('+img.id+','+productId+')" style="position:absolute;top:2px;right:2px;background:rgba(239,68,68,0.85);color:#fff;border:none;border-radius:4px;width:16px;height:16px;font-size:10px;cursor:pointer;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;">✕</button>'+
+    '</div>'
+  ).join('');
+}
+
+async function deleteProductImg(imageId, productId) {
+  if(!confirm('Bu resmi silmek istiyor musunuz?')) return;
+  const res = await fetch('/api/admin/products/'+productId+'/images/'+imageId, {method:'DELETE'});
+  const data = await res.json();
+  if(data.success) { showToast('Resim silindi.','success'); loadExistingImages(productId); }
+  else showToast(data.error||'Hata.','error');
+}
+
+async function setImgPrimary(imageId, productId) {
+  const res = await fetch('/api/admin/products/'+productId+'/images/'+imageId+'/primary', {method:'PATCH'});
+  const data = await res.json();
+  if(data.success) { showToast('Ana resim güncellendi.','success'); loadExistingImages(productId); }
+  else showToast(data.error||'Hata.','error');
+}
 async function saveProduct(e){
   e.preventDefault();
   const btn=document.getElementById('productSaveBtn');btn.disabled=true;btn.textContent='...';
@@ -1116,12 +1175,23 @@ async function saveProduct(e){
   fd.append('stock',document.getElementById('pStock').value||'0');
   fd.append('description',document.getElementById('pDesc').value);
   fd.append('featured',document.getElementById('pFeatured').checked?'1':'0');
-  const img=document.getElementById('pImage').files[0];if(img)fd.append('image',img);
+  const imgFiles=document.getElementById('pImage').files;
+  // İlk resmi ana resim olarak da gönder (ürün kartları için)
+  if(imgFiles.length>0) fd.append('image', imgFiles[0]);
   const res=await fetch(id?'/api/admin/products/'+id:'/api/admin/products',{method:id?'PUT':'POST',body:fd});
   const data=await res.json();
   btn.disabled=false;btn.textContent='Kaydet';
-  if(data.success){showToast(id?'Guncellendi!':'Eklendi!','success');closeProductModal();await loadProducts();loadDashboard();}
-  else showToast(data.error||'Hata.','error');
+  if(data.success){
+    const productId = id || data.id;
+    // Seçilen TÜM resimleri galeri endpoint'ine yükle (1 resim bile olsa)
+    if(productId && imgFiles.length > 0) {
+      const imgFd = new FormData();
+      for(let i=0;i<imgFiles.length;i++) imgFd.append('images', imgFiles[i]);
+      await fetch('/api/admin/products/'+productId+'/images', {method:'POST', body:imgFd}).catch(()=>{});
+    }
+    showToast(id?'Guncellendi!':'Eklendi!','success');
+    closeProductModal();await loadProducts();loadDashboard();
+  } else showToast(data.error||'Hata.','error');
 }
 
 // KATEGORI MODAL
