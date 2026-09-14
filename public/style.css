@@ -3380,3 +3380,121 @@ body.light-mode .theme-toggle .toggle-thumb { background: #f59e0b; transform: tr
   white-space: nowrap;
 }
 .lang-toggle-btn:hover { border-color: var(--blue-mid); color: var(--text); }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ÜRÜN RESİM GALERİSİ
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.product-gallery-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+}
+.product-gallery-main-img {
+  flex: 1;
+  background: var(--bg3);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  position: relative;
+  cursor: zoom-in;
+}
+.product-gallery-main-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .4s ease;
+}
+.product-gallery-main-img:hover img { transform: scale(1.04); }
+.product-gallery-main-img .no-img-placeholder {
+  font-size: 100px;
+  opacity: .06;
+}
+
+/* Thumbnail şeridi */
+.product-thumbs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.product-thumbs::-webkit-scrollbar { display: none; }
+.product-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 9px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  flex-shrink: 0;
+  transition: var(--trans);
+  background: var(--bg3);
+}
+.product-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .3s ease;
+}
+.product-thumb:hover { border-color: rgba(255,255,255,0.3); }
+.product-thumb.active { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+.product-thumb:hover img { transform: scale(1.08); }
+
+/* Büyütme overlay */
+.img-zoom-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.92);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn .2s ease;
+  cursor: zoom-out;
+}
+.img-zoom-overlay img {
+  max-width: 92vw;
+  max-height: 92vh;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+.img-zoom-close {
+  position: absolute; top: 20px; right: 20px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff; width: 40px; height: 40px;
+  border-radius: 50%; font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: var(--trans);
+}
+.img-zoom-close:hover { background: var(--red); }
+.img-zoom-prev, .img-zoom-next {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #fff; width: 46px; height: 46px;
+  border-radius: 50%; font-size: 22px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: var(--trans);
+}
+.img-zoom-prev { left: 20px; }
+.img-zoom-next { right: 20px; }
+.img-zoom-prev:hover, .img-zoom-next:hover { background: var(--red); border-color: var(--red); }
+
+/* Resim sayı badge */
+.gallery-count-badge {
+  position: absolute; bottom: 10px; right: 10px;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  color: #fff; font-size: 11px; font-weight: 700;
+  padding: 3px 9px; border-radius: 50px;
+  border: 1px solid rgba(255,255,255,0.15);
+  font-family: 'Rajdhani', sans-serif; letter-spacing: .5px;
+}
+
+@media (max-width: 768px) {
+  .product-gallery-main-img { min-height: 240px; }
+  .product-thumb { width: 52px; height: 52px; }
+}

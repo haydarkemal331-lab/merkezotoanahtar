@@ -797,10 +797,8 @@ if (PAGE === 'product') {
     document.getElementById('productDetail').innerHTML =
       '<div class="product-page-hero">' +
         '<div class="product-hero-top">' +
-          '<div class="product-gallery">' +
-            (p.image ? '<img class="product-gallery-main" src="'+p.image+'" alt="'+p.name+'"/>' : '<div class="product-gallery-no-img">🔑</div>') +
-            '<div class="product-serial-badge"><span>SERİ NO</span><strong>'+seriNo+'</strong></div>' +
-            discountBadge +
+          '<div class="product-gallery" id="productGalleryWrap">' +
+            '<div class="product-gallery-no-img">🔑</div>' +
           '</div>' +
           '<div class="product-info-panel">' +
             '<div>' +
@@ -846,6 +844,120 @@ if (PAGE === 'product') {
       const usdEl = document.getElementById('productPriceUsd');
       if (usdEl) usdEl.textContent = '≈ $' + (p.price / lastUsdRate).toFixed(2);
     }
+
+    // ── Çoklu resim galerisi ────────────────────────────────────────────────
+    (async () => {
+      const galleryWrap = document.getElementById('productGalleryWrap');
+      if (!galleryWrap) return;
+
+      let images = [];
+      try {
+        const imgRes = await fetch('/api/products/' + productId + '/images');
+        if (imgRes.ok) images = await imgRes.json();
+      } catch(e) { /* sessiz hata */ }
+
+      // Ana resmi de listeye dahil et (galeriden yoksa)
+      if (images.length === 0 && p.image) {
+        images = [{ id: 0, url: p.image, isPrimary: 1 }];
+      }
+      if (images.length === 0) {
+        galleryWrap.innerHTML =
+          '<div class="product-gallery-no-img">🔑</div>' +
+          '<div class="product-serial-badge"><span>SERİ NO</span><strong>' + seriNo + '</strong></div>' +
+          discountBadge;
+        return;
+      }
+
+      // Primary'i öne al
+      images.sort((a,b) => (b.isPrimary||0) - (a.isPrimary||0));
+
+      let currentIdx = 0;
+
+      function buildGalleryHTML() {
+        const thumbsHtml = images.length > 1
+          ? '<div class="product-thumbs" id="productThumbs">' +
+              images.map((img, i) =>
+                '<div class="product-thumb' + (i===0?' active':'') + '" onclick="window.selectGalleryImg(' + i + ')" data-idx="' + i + '">' +
+                  '<img src="' + img.url + '" alt="Resim ' + (i+1) + '" loading="lazy"/>' +
+                '</div>'
+              ).join('') +
+            '</div>'
+          : '';
+
+        return '<div class="product-gallery-wrap">' +
+          '<div class="product-gallery-main-img" id="galleryMainImgWrap" onclick="window.openZoom(' + 0 + ')">' +
+            '<img id="galleryMainImg" src="' + images[0].url + '" alt="' + p.name + '"/>' +
+            (images.length > 1 ? '<div class="gallery-count-badge" id="galleryBadge">1 / ' + images.length + '</div>' : '') +
+          '</div>' +
+          thumbsHtml +
+        '</div>' +
+        '<div class="product-serial-badge"><span>SERİ NO</span><strong>' + seriNo + '</strong></div>' +
+        discountBadge;
+      }
+
+      galleryWrap.innerHTML = buildGalleryHTML();
+
+      // Thumbnail seçme
+      window.selectGalleryImg = function(idx) {
+        if (idx < 0 || idx >= images.length) return;
+        currentIdx = idx;
+        const mainImg = document.getElementById('galleryMainImg');
+        const badge   = document.getElementById('galleryBadge');
+        const mainWrap = document.getElementById('galleryMainImgWrap');
+        if (mainImg) mainImg.src = images[idx].url;
+        if (badge)   badge.textContent = (idx + 1) + ' / ' + images.length;
+        if (mainWrap) mainWrap.onclick = () => window.openZoom(idx);
+        document.querySelectorAll('.product-thumb').forEach((el, i) => {
+          el.classList.toggle('active', i === idx);
+        });
+      };
+
+      // Zoom overlay
+      window.openZoom = function(idx) {
+        currentIdx = (idx !== undefined) ? idx : currentIdx;
+        if (document.getElementById('imgZoomOverlay')) return;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'imgZoomOverlay';
+        overlay.className = 'img-zoom-overlay';
+        overlay.innerHTML =
+          '<button class="img-zoom-close" id="zoomClose" title="Kapat">✕</button>' +
+          (images.length > 1 ? '<button class="img-zoom-prev" id="zoomPrev">‹</button>' : '') +
+          '<img id="zoomImg" src="' + images[currentIdx].url + '" alt="' + p.name + '"/>' +
+          (images.length > 1 ? '<button class="img-zoom-next" id="zoomNext">›</button>' : '');
+
+        document.body.appendChild(overlay);
+        document.body.style.overflow = 'hidden';
+
+        function closeZoom() {
+          overlay.remove();
+          document.body.style.overflow = '';
+          document.removeEventListener('keydown', onKey);
+        }
+
+        function showZoomImg(i) {
+          currentIdx = (i + images.length) % images.length;
+          const zImg = document.getElementById('zoomImg');
+          if (zImg) zImg.src = images[currentIdx].url;
+          window.selectGalleryImg(currentIdx);
+        }
+
+        function onKey(e) {
+          if (e.key === 'Escape') closeZoom();
+          if (e.key === 'ArrowRight') showZoomImg(currentIdx + 1);
+          if (e.key === 'ArrowLeft')  showZoomImg(currentIdx - 1);
+        }
+
+        document.getElementById('zoomClose').addEventListener('click', closeZoom);
+        overlay.addEventListener('click', e => { if (e.target === overlay) closeZoom(); });
+        const prevBtn = document.getElementById('zoomPrev');
+        const nextBtn = document.getElementById('zoomNext');
+        if (prevBtn) prevBtn.addEventListener('click', e => { e.stopPropagation(); showZoomImg(currentIdx - 1); });
+        if (nextBtn) nextBtn.addEventListener('click', e => { e.stopPropagation(); showZoomImg(currentIdx + 1); });
+        document.addEventListener('keydown', onKey);
+      };
+    })();
+    // ── Galeri sonu ─────────────────────────────────────────────────────────
 
     // Yorumları yükle
     const reviewData = await loadReviews(p.id);
