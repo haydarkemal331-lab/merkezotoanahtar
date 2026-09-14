@@ -1098,9 +1098,6 @@ function openEditProductModal(id){
   const subs=allSubCats.filter(s=>s.parent_id===parseInt(p.category_id||0));
   document.getElementById('pSubCategory').innerHTML='<option value="">— Sec —</option>'+subs.map(s=>'<option value="'+s.id+'">'+s.name+'</option>').join('');
   document.getElementById('pSubCategory').value=p.sub_category_id||'';
-  const prev=document.getElementById('imgPreview');
-  if(p.image){prev.src=p.image;prev.style.display='block';document.getElementById('imgPlaceholder').style.display='none';}
-  else{prev.style.display='none';document.getElementById('imgPlaceholder').style.display='block';}
   document.getElementById('pImage').value='';
   const np = document.getElementById('newImgPreviews'); if(np) np.innerHTML='';
   document.getElementById('imgPlaceholder').style.display='block';
