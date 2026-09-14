@@ -489,6 +489,24 @@ const db = {
     return true;
   },
 
+  deleteOrder(id) {
+    const data = readDB();
+    const order = (data.orders || []).find(o => o.id === parseInt(id));
+    if (!order) return null;
+    // Stoku geri yükle (iptal değilse)
+    if (order.status !== 'cancelled') {
+      const items = (data.orderItems || []).filter(i => i.orderId === parseInt(id));
+      items.forEach(item => {
+        const pIdx = data.products.findIndex(p => p.id === item.productId);
+        if (pIdx !== -1) data.products[pIdx].stock += item.quantity;
+      });
+    }
+    data.orders = (data.orders || []).filter(o => o.id !== parseInt(id));
+    data.orderItems = (data.orderItems || []).filter(i => i.orderId !== parseInt(id));
+    writeDB(data);
+    return order;
+  },
+
   getOrderStats() {
     const data = readDB();
     const orders = data.orders || [];

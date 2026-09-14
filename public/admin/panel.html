@@ -40,6 +40,9 @@
       <a href="#" onclick="showSection('returns',this)">
         <span class="nav-icon">&#x1F504;</span><span class="nav-text">&#304;ade Talepleri</span>
       </a>
+      <a href="#" onclick="showSection('reviews',this)">
+        <span class="nav-icon">&#x2B50;</span><span class="nav-text">Yorumlar</span>
+      </a>
       <a href="#" onclick="showSection('users',this)">
         <span class="nav-icon">&#x1F465;</span><span class="nav-text">Uyeler</span>
       </a>
@@ -98,6 +101,7 @@
           <div class="stat-card"><span class="stat-icon">&#x2705;</span><div class="stat-info"><strong id="statStock">-</strong><span>Stokta Var</span></div></div>
           <div class="stat-card"><span class="stat-icon">&#x1F465;</span><div class="stat-info"><strong id="statUsers">-</strong><span>Kayitli Uye</span></div></div>
           <div class="stat-card"><span class="stat-icon">&#x1F504;</span><div class="stat-info"><strong id="statReturns">-</strong><span>&#304;ade Talebi</span></div></div>
+          <div class="stat-card"><span class="stat-icon">&#x2B50;</span><div class="stat-info"><strong id="statReviews">-</strong><span>Onay Bekleyen Yorum</span></div></div>
         </div>
         <div class="dash-summary">
           <div class="dash-sum-card"><span class="dsc-label">Bug&#252;n Kazan&#231;</span><span class="dsc-val" id="dashTodayRev">₺0</span><span class="dsc-sub" id="dashTodayCount">0 sat&#305;&#351;</span></div>
@@ -117,6 +121,31 @@
             <button class="btn-primary btn-sm" onclick="showSection('sales',null)">T&#252;m Sat&#305;&#351;lar &rarr;</button>
           </div>
           <div id="recentSalesTable"></div>
+        </div>
+      </div>
+
+      <!-- YORUMLAR -->
+      <div id="section-reviews" style="display:none">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+          <select id="reviewStatusFilter" style="padding:9px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:9px;color:var(--text);font-size:13px;outline:none;" onchange="filterReviews()">
+            <option value="">Tum Durumlar</option>
+            <option value="pending">Onay Bekliyor</option>
+            <option value="approved">Onaylandi</option>
+          </select>
+          <input type="text" id="reviewSearch" placeholder="Urun veya yorum ara..." style="padding:9px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:9px;color:var(--text);font-size:13px;outline:none;width:240px;" oninput="filterReviews()"/>
+          <span id="reviewPendingBadge" style="background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);font-size:12px;font-weight:700;padding:4px 12px;border-radius:6px;display:none;"></span>
+        </div>
+        <div class="admin-table-wrap">
+          <div class="admin-table-header">
+            <h3>&#x2B50; Yorumlar (<span id="reviewCount">0</span>)</h3>
+            <span style="font-size:12px;color:var(--muted);">Onaylanmadan sitede gozukmez</span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>Urun</th><th>Kullanici</th><th>Puan</th><th>Yorum</th><th>Tarih</th><th>Durum</th><th>Islem</th></tr></thead>
+              <tbody id="reviewsTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -635,7 +664,8 @@ async function silentRefreshAll() {
       refreshDashboard(),
       refreshOrders(),
       refreshReturns(),
-      refreshUsers()
+      refreshUsers(),
+      loadReviewsAdmin()
     ]);
     updateLastRefreshIndicator();
   } catch(e) { /* sessiz hata */ }
@@ -787,7 +817,7 @@ setInterval(()=>{
 let allProducts=[], allCats=[], allSubCats=[], allPosts=[], allSales=[], allOrders=[], allUsers=[];
 
 async function loadAll(){
-  await Promise.all([loadProducts(),loadCats(),loadSubCats(),loadPosts(),loadSalesData(),loadOrdersAdmin(),loadUsers(),loadReturnsAdmin()]);
+  await Promise.all([loadProducts(),loadCats(),loadSubCats(),loadPosts(),loadSalesData(),loadOrdersAdmin(),loadUsers(),loadReturnsAdmin(),loadReviewsAdmin()]);
   loadDashboard();
   startAutoUpdate();
 }
@@ -1015,14 +1045,15 @@ function showSection(name,el){
   document.getElementById('section-'+name).style.display='block';
   document.querySelectorAll('.sidebar-nav a').forEach(a=>a.classList.remove('active'));
   if(el)el.classList.add('active');
-  const titles={dashboard:'Dashboard',sales:'Satislar',products:'Urunler',categories:'Kategoriler',about:'Hakkimizda',posts:'Paylasimlar',orders:'Siparisler',returns:'Iade Talepleri',users:'Uyeler'};
-  const icons={dashboard:'&#x1F4CA;',sales:'&#x1F4B0;',products:'&#x1F4E6;',categories:'&#x1F5C2;',about:'&#x1F3E2;',posts:'&#x1F4F0;',orders:'&#x1F6D2;',returns:'&#x1F504;',users:'&#x1F465;'};
+  const titles={dashboard:'Dashboard',sales:'Satislar',products:'Urunler',categories:'Kategoriler',about:'Hakkimizda',posts:'Paylasimlar',orders:'Siparisler',returns:'Iade Talepleri',users:'Uyeler',reviews:'Yorumlar'};
+  const icons={dashboard:'&#x1F4CA;',sales:'&#x1F4B0;',products:'&#x1F4E6;',categories:'&#x1F5C2;',about:'&#x1F3E2;',posts:'&#x1F4F0;',orders:'&#x1F6D2;',returns:'&#x1F504;',users:'&#x1F465;',reviews:'&#x2B50;'};
   document.getElementById('pageTitle').textContent=titles[name]||name;
   const iconEl=document.getElementById('pageTitleIcon');if(iconEl)iconEl.innerHTML=icons[name]||'';
   if(name==='products')loadProducts();
   if(name==='orders'){loadOrdersAdmin();}
   if(name==='users'){loadUsers();}
   if(name==='returns'){loadReturnsAdmin();}
+  if(name==='reviews'){loadReviewsAdmin();}
   if(name==='categories'){loadCats();loadSubCats();}
   if(name==='about')loadAboutAdmin();
   if(name==='sales'){loadSalesData();loadDashboard();}
@@ -1271,6 +1302,7 @@ function renderOrdersTable(orders) {
       '<td style="font-size:12px;color:var(--muted);">'+date+'</td>'+
       '<td style="display:flex;gap:4px;flex-wrap:wrap;">'+
         '<button class="btn-sm btn-edit" onclick="openOrderDetailAdmin('+o.id+')" title="Detay">&#x1F50D;</button>'+
+        '<button class="btn-sm btn-delete" onclick="confirmDelOrder('+o.id+')" title="Siparis Sil" style="margin-left:4px;">&#x1F5D1;</button>'+
         (o.status==='pending'?'<button class="btn-sm btn-green" onclick="quickStatus('+o.id+",'"+'confirmed'+"'"+')">Onayla</button>':'')+
         (o.status==='confirmed'?'<button class="btn-sm" style="background:rgba(37,99,235,0.12);color:#60a5fa;border:1px solid rgba(37,99,235,0.2);" onclick="quickStatus('+o.id+","+"'"+'preparing'+"'"+')" >Hazirla</button>':'')+
         (o.status==='preparing'?'<button class="btn-sm" style="background:rgba(168,85,247,0.1);color:#c084fc;border:1px solid rgba(168,85,247,0.2);" onclick="openTrackingModal('+o.id+')">Kargoya Ver</button>':'')+
@@ -1634,6 +1666,102 @@ async function processReturn(status) {
     await loadReturnsAdmin();
     loadDashboard();
   } else showToast(data.error||'Hata.','error');
+}
+
+
+// ─── YORUMLAR ────────────────────────────────────────────────────────────────
+let allReviewsAdmin = [];
+
+async function loadReviewsAdmin() {
+  allReviewsAdmin = await fetch('/api/admin/reviews').then(r=>r.json()).catch(()=>[]);
+  filterReviews();
+  const pending = allReviewsAdmin.filter(r=>!r.approved).length;
+  const el = document.getElementById('statReviews');
+  if(el) el.textContent = pending;
+  const badge = document.getElementById('reviewPendingBadge');
+  if(badge) {
+    badge.textContent = pending + ' onay bekliyor';
+    badge.style.display = pending > 0 ? 'inline' : 'none';
+  }
+}
+
+function filterReviews() {
+  const statusF = document.getElementById('reviewStatusFilter').value;
+  const searchF = (document.getElementById('reviewSearch').value||'').toLowerCase();
+  let filtered = allReviewsAdmin;
+  if(statusF === 'pending')  filtered = filtered.filter(r=>!r.approved);
+  if(statusF === 'approved') filtered = filtered.filter(r=>r.approved);
+  if(searchF) filtered = filtered.filter(r=>
+    (r.product&&r.product.name||'').toLowerCase().includes(searchF) ||
+    (r.comment||'').toLowerCase().includes(searchF) ||
+    (r.user&&r.user.name||'').toLowerCase().includes(searchF)
+  );
+  renderReviewsTable(filtered);
+}
+
+function renderReviewsTable(reviews) {
+  const tbody = document.getElementById('reviewsTableBody');
+  const countEl = document.getElementById('reviewCount');
+  if(countEl) countEl.textContent = reviews.length;
+  if(!reviews.length) {
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--muted);">Yorum yok.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = reviews.map(r => {
+    var starsHtml = [1,2,3,4,5].map(function(i){ return '<span style="color:'+(i<=r.rating?'#fbbf24':'#374151')+';font-size:14px;">&#x2605;</span>'; }).join('');
+    const date = new Date(r.created_at).toLocaleDateString('tr-TR');
+    const userName = r.user ? r.user.name : 'Anonim';
+    const productName = r.product ? r.product.name : '-';
+    return '<tr>'+
+      '<td style="max-width:140px;font-size:12px;color:var(--white);">'+productName+'</td>'+
+      '<td style="font-size:12px;color:var(--muted);">'+userName+'</td>'+
+      '<td>'+starsHtml+'</td>'+
+      '<td style="max-width:200px;font-size:12px;color:var(--muted);">'+(r.comment||'-').slice(0,80)+'</td>'+
+      '<td style="font-size:12px;color:var(--muted);">'+date+'</td>'+
+      '<td>'+(r.approved
+        ? '<span style="background:rgba(34,197,94,0.1);color:#4ade80;border:1px solid rgba(34,197,94,0.2);font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;">Onaylandi</span>'
+        : '<span style="background:rgba(251,191,36,0.1);color:#fbbf24;border:1px solid rgba(251,191,36,0.2);font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;">Bekliyor</span>'
+      )+'</td>'+
+      '<td style="display:flex;gap:5px;">'+
+        (!r.approved ? '<button class="btn-sm btn-green" onclick="approveReview('+r.id+')">&#x2705; Onayla</button>' : '')+
+        '<button class="btn-sm btn-delete" onclick="deleteReview('+r.id+')">&#x1F5D1;</button>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+}
+
+async function approveReview(id) {
+  const res = await fetch('/api/admin/reviews/'+id+'/approve',{method:'PATCH'});
+  const data = await res.json();
+  if(data.success){showToast('Yorum onaylandi!','success');await loadReviewsAdmin();}
+  else showToast(data.error||'Hata.','error');
+}
+
+async function deleteReview(id) {
+  if(!confirm('Yorumu silmek istediginize emin misiniz?')) return;
+  const res = await fetch('/api/admin/reviews/'+id,{method:'DELETE'});
+  const data = await res.json();
+  if(data.success){showToast('Yorum silindi.','success');await loadReviewsAdmin();}
+  else showToast(data.error||'Hata.','error');
+}
+
+// ─── SİPARİŞ SİL ────────────────────────────────────────────────────────────
+function confirmDelOrder(id) {
+  if(!confirm('Bu siparisi silmek istediginize emin misiniz? Stok geri yuklenecek.')) return;
+  fetch('/api/admin/orders/'+id,{method:'DELETE'}).then(r=>r.json()).then(data=>{
+    if(data.success){showToast('Siparis silindi.','success');loadOrdersAdmin();loadDashboard();}
+    else showToast(data.error||'Silinemedi.','error');
+  });
+}
+
+// ─── MANUEL YENİLE ─────────────────────────────────────────────────────────
+async function manualRefresh() {
+  const btn = document.querySelector('[onclick="manualRefresh()"]');
+  if(btn){btn.innerHTML='&#x1F504; Yenileniyor...';btn.disabled=true;}
+  await Promise.all([loadProducts(),loadCats(),loadSubCats(),loadPosts(),loadSalesData(),loadOrdersAdmin(),loadUsers(),loadReturnsAdmin(),loadReviewsAdmin()]);
+  loadDashboard();
+  if(btn){btn.innerHTML='&#x1F504; Yenile';btn.disabled=false;}
+  showToast('Veriler guncellendi!','success');
 }
 
 async function doLogout(){await fetch('/api/admin/logout',{method:'POST'});window.location.href='/admin';}

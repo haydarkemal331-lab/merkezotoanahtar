@@ -122,6 +122,12 @@ function createProductCard(p) {
     ? Math.round((1 - p.price / p.old_price) * 100) : 0;
   const catName = p.category_name || 'Ürün';
   const usdStr = lastUsdRate ? `$${(p.price / lastUsdRate).toFixed(0)}` : '';
+  // Yıldız gösterimi (varsa)
+  const starsHtml = p.review_avg
+    ? `<div style="display:flex;align-items:center;gap:3px;margin-bottom:5px;">
+        ${[1,2,3,4,5].map(i=>`<span style="color:${i<=Math.round(p.review_avg)?'#fbbf24':'#374151'};font-size:12px;">★</span>`).join('')}
+        <span style="font-size:10px;color:var(--muted);margin-left:2px;">(${p.review_count})</span>
+       </div>` : '';
   return `
     <div class="product-card">
       <div class="img-wrap" onclick="window.location.href='/urun/${p.id}'" style="cursor:pointer;">
@@ -132,6 +138,7 @@ function createProductCard(p) {
         <div class="category-tag">${catName}</div>
         <h3 onclick="window.location.href='/urun/${p.id}'" style="cursor:pointer;">${p.name}</h3>
         <div class="price-box">
+          ${starsHtml}
           <div class="price">${formatPrice(p.price)}</div>
           ${usdStr ? `<div class="price-usd">≈ ${usdStr}</div>` : ''}
           ${p.old_price ? `<div class="old-price">${formatPrice(p.old_price)}</div>` : ''}

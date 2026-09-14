@@ -106,7 +106,12 @@ function requireAdmin(req, res, next) {
 // Ürünler
 app.get('/api/products', (req, res) => {
   const { category, subCategory, search } = req.query;
-  res.json(db.getProducts({ categorySlug: category, subCategorySlug: subCategory, search }));
+  const products = db.getProducts({ categorySlug: category, subCategorySlug: subCategory, search });
+  const productsWithReviews = products.map(p => {
+    const stats = db.getReviewStats(p.id);
+    return { ...p, review_avg: stats.avg, review_count: stats.count };
+  });
+  res.json(productsWithReviews);
 });
 
 app.get('/api/products/:id', (req, res) => {
@@ -490,6 +495,23 @@ app.patch('/api/admin/orders/bulk/status', requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Geçersiz durum.' });
   db.bulkUpdateOrderStatus(ids, status);
   res.json({ success: true, updated: ids.length });
+});
+
+// Sipariş sil (admin)
+app.delete('/api/admin/orders/:id', requireAdmin, (req, res) => {
+  try {
+    const result = db.deleteOrder(parseInt(req.params.id));
+    if (!result) return res.status(404).json({ error: 'Sipariş bulunamadı.' });
+    res.json({ success: true });
+  } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
+// Toplu sipariş sil (admin)
+app.delete('/api/admin/orders/bulk', requireAdmin, (req, res) => {
+  const { ids } = req.body;
+  if (!ids || !ids.length) return res.status(400).json({ error: 'ID listesi gerekli.' });
+  ids.forEach(id => db.deleteOrder(parseInt(id)));
+  res.json({ success: true, deleted: ids.length });
 });
 
 function requireUser(req, res, next) {
