@@ -248,48 +248,39 @@ function renderCheckout(cartData) {
     <div class="checkout-layout">
       <!-- SOL: FORM -->
       <div>
-        <!-- Teslimat Adresi -->
-        <div class="checkout-card">
-          <div class="checkout-card-header"><h3>📍 Teslimat Adresi</h3></div>
-          <div class="checkout-card-body">
-            ${currentUser.address ? `
-              <div class="use-saved-addr" onclick="fillSavedAddress()">
-                📋 Kayıtlı adresimi kullan: <strong style="color:var(--blue-light);">${currentUser.city} / ${currentUser.district}</strong>
-              </div>` : ''}
-            <div class="form-grid2">
-              <div class="fg">
-                <label>Ad Soyad *</label>
-                <input type="text" id="addr_name" value="${currentUser.name}" required/>
+                  <!-- Teslimat Adresi -->
+          <div class="checkout-card">
+            <div class="checkout-card-header"><h3>📍 Teslimat Adresi</h3></div>
+            <div class="checkout-card-body">
+              <div id="savedAddressList"></div>
+              <div id="newAddrToggleRow" style="margin-top:8px;">
+                <button type="button" onclick="toggleNewAddrForm()" id="newAddrToggleBtn"
+                  style="width:100%;padding:12px;background:var(--bg3);border:1.5px dashed var(--border);border-radius:9px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
+                  + Yeni Adres Gir
+                </button>
               </div>
-              <div class="fg">
-                <label>Telefon *</label>
-                <input type="tel" id="addr_phone" value="${currentUser.phone || ''}" placeholder="05xx xxx xx xx" required/>
+              <div id="newAddrForm" style="display:none;margin-top:14px;">
+                <div class="form-grid2">
+                  <div class="fg"><label>Ad Soyad *</label><input type="text" id="addr_name" value="${currentUser.name}"/></div>
+                  <div class="fg"><label>Telefon *</label><input type="tel" id="addr_phone" value="${currentUser.phone || ''}" placeholder="05xx xxx xx xx"/></div>
+                  <div class="fg full"><label>Adres *</label><input type="text" id="addr_address" placeholder="Mahalle, Cadde, Sokak, No..."/></div>
+                  <div class="fg"><label>İl *</label><input type="text" id="addr_city" placeholder="İstanbul"/></div>
+                  <div class="fg"><label>İlçe</label><input type="text" id="addr_district" placeholder="Kadıköy"/></div>
+                  <div class="fg"><label>Posta Kodu</label><input type="text" id="addr_zip" placeholder="34000"/></div>
+                  <div class="fg full" style="display:flex;align-items:center;gap:10px;">
+                    <input type="checkbox" id="saveNewAddr" style="width:16px;height:16px;accent-color:var(--red);cursor:pointer;"/>
+                    <label for="saveNewAddr" style="font-size:13px;color:var(--muted);cursor:pointer;margin:0;">Bu adresi hesabıma kaydet</label>
+                  </div>
+                </div>
               </div>
-              <div class="fg full">
-                <label>Adres *</label>
-                <input type="text" id="addr_address" value="${currentUser.address || ''}" placeholder="Mahalle, Cadde, Sokak, No..." required/>
-              </div>
-              <div class="fg">
-                <label>İl *</label>
-                <input type="text" id="addr_city" value="${currentUser.city || ''}" placeholder="Ankara" required/>
-              </div>
-              <div class="fg">
-                <label>İlçe</label>
-                <input type="text" id="addr_district" value="${currentUser.district || ''}" placeholder="Çankaya"/>
-              </div>
-              <div class="fg">
-                <label>Posta Kodu</label>
-                <input type="text" id="addr_zip" value="${currentUser.zip || ''}" placeholder="06000"/>
-              </div>
-              <div class="fg full">
+              <div class="fg full" style="margin-top:14px;">
                 <label>Sipariş Notu</label>
                 <input type="text" id="order_note" placeholder="Kargo görevlisine not (opsiyonel)..."/>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Ödeme Yöntemi -->
+          <!-- Ödeme Yöntemi -->
         <div class="checkout-card">
           <div class="checkout-card-header"><h3>💳 Ödeme Yöntemi</h3></div>
           <div class="checkout-card-body">
@@ -413,59 +404,4 @@ initCheckout();
 </script>
 <script src="/wa-support.js"></script>
 </body>
-</html>          <!-- Teslimat Adresi -->
-          <div class="checkout-card">
-            <div class="checkout-card-header"><h3>📍 Teslimat Adresi</h3></div>
-            <div class="checkout-card-body">
-              <!-- Kayıtlı adresler -->
-              <div id="savedAddressList"></div>
-              <!-- Yeni adres toggle -->
-              <div id="newAddrToggleRow" style="margin-top:8px;">
-                <button type="button" onclick="toggleNewAddrForm()" id="newAddrToggleBtn"
-                  style="width:100%;padding:12px;background:var(--bg3);border:1.5px dashed var(--border);border-radius:9px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;transition:var(--trans);font-family:inherit;"
-                  onmouseover="this.style.borderColor='var(--blue-mid)';this.style.color='var(--blue-light)'"
-                  onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
-                  + Yeni Adres Gir
-                </button>
-              </div>
-              <!-- Yeni adres formu (gizli) -->
-              <div id="newAddrForm" style="display:none;margin-top:14px;">
-                <div class="form-grid2">
-                  <div class="fg">
-                    <label>Ad Soyad *</label>
-                    <input type="text" id="addr_name" value="${currentUser.name}"/>
-                  </div>
-                  <div class="fg">
-                    <label>Telefon *</label>
-                    <input type="tel" id="addr_phone" value="${currentUser.phone || ''}" placeholder="05xx xxx xx xx"/>
-                  </div>
-                  <div class="fg full">
-                    <label>Adres *</label>
-                    <input type="text" id="addr_address" placeholder="Mahalle, Cadde, Sokak, No..."/>
-                  </div>
-                  <div class="fg">
-                    <label>İl *</label>
-                    <input type="text" id="addr_city" placeholder="İstanbul"/>
-                  </div>
-                  <div class="fg">
-                    <label>İlçe</label>
-                    <input type="text" id="addr_district" placeholder="Kadıköy"/>
-                  </div>
-                  <div class="fg">
-                    <label>Posta Kodu</label>
-                    <input type="text" id="addr_zip" placeholder="34000"/>
-                  </div>
-                  <div class="fg full" style="display:flex;align-items:center;gap:10px;">
-                    <input type="checkbox" id="saveNewAddr" style="width:16px;height:16px;accent-color:var(--red);cursor:pointer;"/>
-                    <label for="saveNewAddr" style="font-size:13px;color:var(--muted);cursor:pointer;margin:0;">Bu adresi hesabıma kaydet</label>
-                  </div>
-                </div>
-              </div>
-              <!-- Sipariş notu her zaman görünür -->
-              <div class="fg full" style="margin-top:14px;">
-                <label>Sipariş Notu</label>
-                <input type="text" id="order_note" placeholder="Kargo görevlisine not (opsiyonel)..."/>
-              </div>
-            </div>
-          </div>
-          
+</html>
