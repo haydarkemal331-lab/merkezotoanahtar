@@ -432,9 +432,10 @@ if (PAGE === 'home') {
   loadProducts();
   loadCartCount();
 
-  // Hakkımızda & Paylaşımlar
+  // Hakkımızda & Paylaşımlar & Videolar
   loadAbout();
   loadPosts();
+  loadVideos();
 }
 
 // ─── HAKKIMIZDA ───────────────────────────────────────────────────────────────
@@ -488,6 +489,68 @@ async function loadPosts() {
       </div>
     </a>`).join('');
 }
+
+// ─── VİDEO BÖLÜMÜ ────────────────────────────────────────────────────────────
+async function loadVideos() {
+  const section = document.getElementById('videoSection');
+  if (!section) return;
+
+  let videos = [];
+  try {
+    videos = await fetch('/api/videos').then(r => r.json());
+  } catch(e) { return; }
+
+  if (!videos.length) {
+    section.style.display = 'none';
+    return;
+  }
+
+  // Günlük rotasyon: bugünün gün numarasına göre video seç
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  const todayVideo = videos[dayOfYear % videos.length];
+
+  section.style.display = 'block';
+
+  const titleEl = document.getElementById('videoDailyTitle');
+  const descEl  = document.getElementById('videoDailyDesc');
+  const frame   = document.getElementById('videoDailyFrame');
+  const countEl = document.getElementById('videoTotalCount');
+  const dateEl  = document.getElementById('videoDailyDate');
+
+  if (titleEl) titleEl.textContent = todayVideo.title || 'Günün Videosu';
+  if (descEl)  descEl.textContent  = todayVideo.description || '';
+  if (frame)   frame.src = `https://www.youtube.com/embed/${todayVideo.videoId}?rel=0&modestbranding=1`;
+  if (countEl) countEl.textContent = videos.length;
+  if (dateEl)  dateEl.textContent  = new Date().toLocaleDateString('tr-TR', { day:'numeric', month:'long', year:'numeric' });
+
+  // Thumbnail şeridi (diğer videolar)
+  const thumbsEl = document.getElementById('videoThumbStrip');
+  if (thumbsEl && videos.length > 1) {
+    thumbsEl.innerHTML = videos.map((v, i) => `
+      <div class="video-thumb-item ${v.videoId === todayVideo.videoId ? 'active' : ''}"
+           onclick="switchDailyVideo('${v.videoId}', '${(v.title||'').replace(/'/g,"\\'")}', '${(v.description||'').replace(/'/g,"\\'")}', this)">
+        <div class="video-thumb-img">
+          <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg" alt="${v.title || 'Video ' + (i+1)}" loading="lazy"/>
+          <div class="video-thumb-play">&#x25B6;</div>
+        </div>
+        <div class="video-thumb-label">${v.title || 'Video ' + (i+1)}</div>
+      </div>`).join('');
+    thumbsEl.parentElement.style.display = 'block';
+  } else if (thumbsEl) {
+    thumbsEl.parentElement.style.display = 'none';
+  }
+}
+
+window.switchDailyVideo = function(videoId, title, description, el) {
+  const frame   = document.getElementById('videoDailyFrame');
+  const titleEl = document.getElementById('videoDailyTitle');
+  const descEl  = document.getElementById('videoDailyDesc');
+  if (frame)   frame.src = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&autoplay=1`;
+  if (titleEl) titleEl.textContent = title || 'Video';
+  if (descEl)  descEl.textContent  = description || '';
+  document.querySelectorAll('.video-thumb-item').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+};
 
 // ══════════════════════════════════════════════════════════════════════════════
 // KATEGORİ SAYFASI

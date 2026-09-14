@@ -60,6 +60,9 @@
       <a href="#" onclick="showSection('posts',this)">
         <span class="nav-icon">&#x1F4F0;</span><span class="nav-text">Payla&#351;&#305;mlar</span>
       </a>
+      <a href="#" onclick="showSection('videos',this)">
+        <span class="nav-icon">&#x1F3A5;</span><span class="nav-text">Videolar</span>
+      </a>
       <div class="sidebar-divider"></div>
       <a href="/" target="_blank">
         <span class="nav-icon">&#x1F310;</span><span class="nav-text">Siteyi G&#246;r</span>
@@ -424,6 +427,20 @@
         </div>
       </div>
 
+      <!-- VİDEOLAR -->
+      <div id="section-videos" style="display:none">
+        <div class="admin-table-wrap">
+          <div class="admin-table-header">
+            <h3>&#x1F3A5; YouTube Videolar (<span id="videoCount">0</span>)</h3>
+            <button class="btn-primary btn-sm" onclick="openAddVideoModal()">&#x2B; Video Ekle</button>
+          </div>
+          <div style="padding:14px 0 6px;font-size:12px;color:var(--muted);">
+            Ana sayfada günlük rotasyonla gösterilir. Birden fazla video ekleyebilirsiniz.
+          </div>
+          <div id="videoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:12px;"></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -493,6 +510,41 @@
       <div class="modal-footer">
         <button type="button" class="btn-gray" onclick="closePostModal()">İptal</button>
         <button type="submit" class="btn-save" id="postSaveBtn">Kaydet</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- VİDEO EKLE MODAL -->
+<div class="modal-overlay hidden" id="videoModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h3>&#x1F3A5; Video Ekle</h3>
+      <button class="modal-close" onclick="closeVideoModal()">&#x2715;</button>
+    </div>
+    <form id="videoForm" onsubmit="saveVideo(event)">
+      <div class="form-group">
+        <label>YouTube URL *</label>
+        <input type="text" id="videoUrl" placeholder="https://www.youtube.com/watch?v=..." required/>
+        <small style="color:var(--muted);">youtube.com/watch?v=, youtu.be/, youtube.com/shorts/ formatları desteklenir</small>
+      </div>
+      <div class="form-group">
+        <label>Başlık <span style="color:var(--muted);font-weight:400;">(isteğe bağlı)</span></label>
+        <input type="text" id="videoTitle" placeholder="Video başlığı"/>
+      </div>
+      <div class="form-group">
+        <label>Açıklama <span style="color:var(--muted);font-weight:400;">(isteğe bağlı)</span></label>
+        <textarea id="videoDesc" placeholder="Kısa açıklama..." style="min-height:72px;"></textarea>
+      </div>
+      <!-- Önizleme -->
+      <div id="videoPreviewWrap" style="display:none;margin-bottom:12px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">Önizleme:</div>
+        <iframe id="videoPreviewFrame" width="100%" height="180" frameborder="0" allowfullscreen style="border-radius:10px;border:1px solid var(--border);"></iframe>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-gray" onclick="previewVideoInput()">&#x1F441; Önizle</button>
+        <button type="button" class="btn-gray" onclick="closeVideoModal()">İptal</button>
+        <button type="submit" class="btn-save" id="videoSaveBtn">Kaydet</button>
       </div>
     </form>
   </div>
@@ -851,6 +903,92 @@ async function loadPosts(){
   renderPostsTable();
   const el=document.getElementById('postTableCount');if(el)el.textContent=allPosts.length;
 }
+
+// ─── VİDEO YÖNETİMİ ──────────────────────────────────────────────────────────
+let allVideos = [];
+
+async function loadVideosAdmin() {
+  allVideos = await fetch('/api/videos').then(r=>r.json()).catch(()=>[]);
+  renderVideoGrid();
+  const el = document.getElementById('videoCount'); if(el) el.textContent = allVideos.length;
+}
+
+function renderVideoGrid() {
+  const grid = document.getElementById('videoGrid'); if(!grid) return;
+  if(!allVideos.length) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px 0;">Henüz video eklenmedi.</div>';
+    return;
+  }
+  grid.innerHTML = allVideos.map(v => `
+    <div style="background:var(--bg3);border-radius:12px;overflow:hidden;border:1px solid var(--border);">
+      <div style="position:relative;padding-top:56.25%;background:#000;">
+        <img src="https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg"
+          style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.85;"/>
+        <a href="https://www.youtube.com/watch?v=${v.videoId}" target="_blank"
+          style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+          <div style="width:48px;height:48px;background:rgba(255,0,0,.85);border-radius:50%;display:flex;align-items:center;justify-content:center;">
+            <span style="color:#fff;font-size:20px;margin-left:4px;">&#x25B6;</span>
+          </div>
+        </a>
+      </div>
+      <div style="padding:10px 12px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px;color:var(--text);">${v.title || 'Başlık yok'}</div>
+        ${v.description ? `<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">${v.description}</div>` : ''}
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:10px;color:var(--muted);">${new Date(v.createdAt).toLocaleDateString('tr-TR')}</span>
+          <button onclick="deleteVideo(${v.id})" style="background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.3);padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;">Sil</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openAddVideoModal() {
+  document.getElementById('videoUrl').value = '';
+  document.getElementById('videoTitle').value = '';
+  document.getElementById('videoDesc').value = '';
+  document.getElementById('videoPreviewWrap').style.display = 'none';
+  document.getElementById('videoPreviewFrame').src = '';
+  document.getElementById('videoModal').classList.remove('hidden');
+}
+function closeVideoModal() {
+  document.getElementById('videoModal').classList.add('hidden');
+  document.getElementById('videoPreviewFrame').src = '';
+}
+
+function previewVideoInput() {
+  const url = document.getElementById('videoUrl').value.trim();
+  if(!url) return showToast('URL girin.','error');
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+  if(!match) return showToast('Geçersiz YouTube URL\'i','error');
+  const videoId = match[1];
+  document.getElementById('videoPreviewFrame').src = 'https://www.youtube.com/embed/' + videoId;
+  document.getElementById('videoPreviewWrap').style.display = 'block';
+}
+
+async function saveVideo(e) {
+  e.preventDefault();
+  const btn = document.getElementById('videoSaveBtn'); btn.disabled=true; btn.textContent='...';
+  const body = {
+    url: document.getElementById('videoUrl').value.trim(),
+    title: document.getElementById('videoTitle').value.trim(),
+    description: document.getElementById('videoDesc').value.trim()
+  };
+  const res = await fetch('/api/admin/videos', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const data = await res.json();
+  btn.disabled=false; btn.textContent='Kaydet';
+  if(data.success) { showToast('Video eklendi!','success'); closeVideoModal(); loadVideosAdmin(); }
+  else showToast(data.error||'Hata.','error');
+}
+
+async function deleteVideo(id) {
+  if(!confirm('Bu videoyu silmek istiyor musunuz?')) return;
+  const res = await fetch('/api/admin/videos/'+id, {method:'DELETE'});
+  const data = await res.json();
+  if(data.success) { showToast('Video silindi.','success'); loadVideosAdmin(); }
+  else showToast(data.error||'Hata.','error');
+}
+// ─────────────────────────────────────────────────────────────────────────────
 async function loadSalesData(){
   allSales=await fetch('/api/admin/sales').then(r=>r.json());
   renderSalesTable(allSales);
@@ -1056,8 +1194,8 @@ function showSection(name,el){
   document.getElementById('section-'+name).style.display='block';
   document.querySelectorAll('.sidebar-nav a').forEach(a=>a.classList.remove('active'));
   if(el)el.classList.add('active');
-  const titles={dashboard:'Dashboard',sales:'Satislar',products:'Urunler',categories:'Kategoriler',about:'Hakkimizda',posts:'Paylasimlar',orders:'Siparisler',returns:'Iade Talepleri',users:'Uyeler',reviews:'Yorumlar'};
-  const icons={dashboard:'&#x1F4CA;',sales:'&#x1F4B0;',products:'&#x1F4E6;',categories:'&#x1F5C2;',about:'&#x1F3E2;',posts:'&#x1F4F0;',orders:'&#x1F6D2;',returns:'&#x1F504;',users:'&#x1F465;',reviews:'&#x2B50;'};
+  const titles={dashboard:'Dashboard',sales:'Satislar',products:'Urunler',categories:'Kategoriler',about:'Hakkimizda',posts:'Paylasimlar',orders:'Siparisler',returns:'Iade Talepleri',users:'Uyeler',reviews:'Yorumlar',videos:'Videolar'};
+  const icons={dashboard:'&#x1F4CA;',sales:'&#x1F4B0;',products:'&#x1F4E6;',categories:'&#x1F5C2;',about:'&#x1F3E2;',posts:'&#x1F4F0;',orders:'&#x1F6D2;',returns:'&#x1F504;',users:'&#x1F465;',reviews:'&#x2B50;',videos:'&#x1F3A5;'};
   document.getElementById('pageTitle').textContent=titles[name]||name;
   const iconEl=document.getElementById('pageTitleIcon');if(iconEl)iconEl.innerHTML=icons[name]||'';
   if(name==='products')loadProducts();
@@ -1069,6 +1207,7 @@ function showSection(name,el){
   if(name==='about')loadAboutAdmin();
   if(name==='sales'){loadSalesData();loadDashboard();}
   if(name==='posts')loadPosts();
+  if(name==='videos')loadVideosAdmin();
 }
 
 // URUN MODAL

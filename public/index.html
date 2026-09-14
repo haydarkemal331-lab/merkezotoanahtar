@@ -127,6 +127,48 @@
 </main>
 
 
+<!-- VİDEO BÖLÜMÜ -->
+<section id="videoSection" style="display:none;background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:56px 0;">
+  <div class="container">
+    <div class="section-header" style="margin-bottom:28px;">
+      <h2><span>🎬</span> <span>Günün Videosu</span></h2>
+      <span id="videoDailyDate" style="font-size:13px;color:var(--muted);"></span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:32px;align-items:start;">
+
+      <!-- Ana oynatıcı -->
+      <div>
+        <div style="position:relative;padding-top:56.25%;background:#000;border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.4);">
+          <iframe id="videoDailyFrame" src="" width="100%" height="100%"
+            style="position:absolute;inset:0;width:100%;height:100%;border:none;"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen></iframe>
+        </div>
+      </div>
+
+      <!-- Sağ panel: başlık + açıklama + thumbnail şeridi -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">🎥 Günün Seçkisi</div>
+          <h3 id="videoDailyTitle" style="font-size:18px;font-weight:700;color:var(--text);line-height:1.4;margin:0 0 8px;"></h3>
+          <p id="videoDailyDesc" style="font-size:13px;color:var(--muted);line-height:1.6;margin:0;"></p>
+        </div>
+        <div style="font-size:12px;color:var(--muted);padding:8px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);">
+          📺 Toplam <strong id="videoTotalCount">0</strong> video — her gün otomatik değişir
+        </div>
+
+        <!-- Thumbnail şeridi -->
+        <div id="videoThumbStripWrap">
+          <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:8px;">Diğer Videolar</div>
+          <div id="videoThumbStrip" style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto;scrollbar-width:thin;"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
 <!-- HAKKIMIZDA + PAYLAŞIMLAR -->
 <section class="about-section" id="hakkimizda">
   <div class="container">

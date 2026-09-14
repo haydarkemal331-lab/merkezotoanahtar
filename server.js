@@ -359,6 +359,32 @@ app.delete('/api/admin/posts/:id', requireAdmin, (req, res) => {
   res.json({ success: true });
 });
 
+// ─── VİDEO API ───────────────────────────────────────────────────────────────
+
+// Public: tüm videoları getir
+app.get('/api/videos', (req, res) => {
+  res.json(db.getVideos());
+});
+
+// Admin: video ekle
+app.post('/api/admin/videos', requireAdmin, (req, res) => {
+  const { url, title, description } = req.body;
+  if (!url) return res.status(400).json({ error: 'YouTube URL zorunludur.' });
+  try {
+    const video = db.addVideo({ url, title, description });
+    res.json({ success: true, video });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Admin: video sil
+app.delete('/api/admin/videos/:id', requireAdmin, (req, res) => {
+  const video = db.deleteVideo(req.params.id);
+  if (!video) return res.status(404).json({ error: 'Video bulunamadı.' });
+  res.json({ success: true });
+});
+
 // ─── SİPARİŞ API ─────────────────────────────────────────────────────────────
 
 // Sipariş oluştur (müşteri)

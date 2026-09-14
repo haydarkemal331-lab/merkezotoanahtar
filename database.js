@@ -34,6 +34,19 @@ const defaultDB = {
   _meta: { lastProductId: 0, lastCategoryId: 6, lastSubCategoryId: 5 }
 };
 
+function extractYouTubeId(url) {
+  if (!url) return null;
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+    /^([a-zA-Z0-9_-]{11})$/
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
 function readDB() {
   if (!fs.existsSync(DB_FILE)) {
     writeDB(defaultDB);
@@ -721,6 +734,95 @@ const db = {
     writeDB(data);
   },
 
+  // ─── ÜRÜN RESİMLERİ ───────────────────────────────────────────────────────
+  getProductImages(productId) {
+    const data = readDB();
+    return (data.productImages || [])
+      .filter(img => img.productId === parseInt(productId))
+      .sort((a, b) => a.order - b.order);
+  },
+
+  addProductImage(productId, url, isPrimary = false) {
+    const data = readDB();
+    if (!data.productImages) data.productImages = [];
+    if (!data._meta.lastImageId) data._meta.lastImageId = 0;
+    // Eğer birincil yapılıyorsa diğerlerini kaldır
+    if (isPrimary) {
+      data.productImages.forEach(img => {
+        if (img.productId === parseInt(productId)) img.isPrimary = false;
+      });
+    }
+    const order = data.productImages.filter(i => i.productId === parseInt(productId)).length;
+    data._meta.lastImageId++;
+    const image = {
+      id: data._meta.lastImageId,
+      productId: parseInt(productId),
+      url,
+      isPrimary: isPrimary || order === 0,
+      order
+    };
+    data.productImages.push(image);
+    // Birinci resimse ürünün ana resmini de güncelle
+    if (image.isPrimary || order === 0) {
+      const pIdx = data.products.findIndex(p => p.id === parseInt(productId));
+      if (pIdx !== -1) data.products[pIdx].image = url;
+    }
+    writeDB(data);
+    return image;
+  },
+
+  deleteProductImage(imageId) {
+    const data = readDB();
+    const img = (data.productImages || []).find(i => i.id === parseInt(imageId));
+    if (!img) return null;
+    data.productImages = data.productImages.filter(i => i.id !== parseInt(imageId));
+    // Silinen birincilse bir sonrakini birincil yap
+    if (img.isPrimary) {
+      const remaining = data.productImages.filter(i => i.productId === img.productId);
+      if (remaining.length > 0) {
+        remaining[0].isPrimary = true;
+        const pIdx = data.products.findIndex(p => p.id === img.productId);
+        if (pIdx !== -1) data.products[pIdx].image = remaining[0].url;
+      } else {
+        // Hiç resim kalmadıysa ürünün ana resmini null yap
+        const pIdx = data.products.findIndex(p => p.id === img.productId);
+        if (pIdx !== -1) data.products[pIdx].image = null;
+      }
+    }
+    // Sırayı yeniden düzenle
+    data.productImages
+      .filter(i => i.productId === img.productId)
+      .forEach((i, idx) => { i.order = idx; });
+    writeDB(data);
+    return img;
+  },
+
+  setPrimaryImage(imageId, productId) {
+    const data = readDB();
+    data.productImages = (data.productImages || []).map(img => {
+      if (img.productId === parseInt(productId)) {
+        img.isPrimary = img.id === parseInt(imageId);
+      }
+      return img;
+    });
+    // Ürünün ana resmini güncelle
+    const primary = data.productImages.find(i => i.id === parseInt(imageId));
+    if (primary) {
+      const pIdx = data.products.findIndex(p => p.id === parseInt(productId));
+      if (pIdx !== -1) data.products[pIdx].image = primary.url;
+    }
+    writeDB(data);
+  },
+
+  reorderProductImages(productId, imageIds) {
+    const data = readDB();
+    imageIds.forEach((id, idx) => {
+      const img = (data.productImages || []).find(i => i.id === parseInt(id));
+      if (img) img.order = idx;
+    });
+    writeDB(data);
+  },
+
   // ─── ADRES YÖNETİMİ ───────────────────────────────────────────────────────
   getAddresses(userId) {
     const data = readDB();
@@ -1017,6 +1119,42 @@ const db = {
     data.posts = data.posts.filter(p => p.id !== parseInt(id));
     writeDB(data);
     return post;
+  },
+
+  // ─── VİDEOLAR ─────────────────────────────────────────────────────────────
+  getVideos() {
+    const data = readDB();
+    return (data.videos || []).sort((a, b) => b.id - a.id);
+  },
+
+  addVideo({ url, title, description }) {
+    const data = readDB();
+    if (!data.videos) data.videos = [];
+    if (!data._meta.lastVideoId) data._meta.lastVideoId = 0;
+    // YouTube URL'inden video ID çıkar
+    const videoId = extractYouTubeId(url);
+    if (!videoId) throw new Error('Geçersiz YouTube URL\'i');
+    data._meta.lastVideoId++;
+    const video = {
+      id: data._meta.lastVideoId,
+      url,
+      videoId,
+      title: title || '',
+      description: description || '',
+      createdAt: new Date().toISOString()
+    };
+    data.videos.push(video);
+    writeDB(data);
+    return video;
+  },
+
+  deleteVideo(id) {
+    const data = readDB();
+    const video = (data.videos || []).find(v => v.id === parseInt(id));
+    if (!video) return null;
+    data.videos = data.videos.filter(v => v.id !== parseInt(id));
+    writeDB(data);
+    return video;
   }
 };
 
