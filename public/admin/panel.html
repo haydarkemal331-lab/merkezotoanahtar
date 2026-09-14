@@ -688,15 +688,23 @@ async function refreshDashboard() {
   const monthRev = monthSales.reduce((a,s)=>a+s.price,0);
   const allRev   = allSales.reduce((a,s)=>a+s.price,0);
 
-  safeSet('statSalesToday', todaySales.length);
+  // Siparis kazancini da ekle
+  var todayOrderRev = allOrders.filter(o=>o.status!=='cancelled'&&o.created_at&&o.created_at.startsWith(today)).reduce((a,o)=>a+o.total,0);
+  var monthOrderRev = allOrders.filter(o=>o.status!=='cancelled'&&o.created_at&&o.created_at.startsWith(thisMonth)).reduce((a,o)=>a+o.total,0);
+  var allOrderRev   = allOrders.filter(o=>o.status!=='cancelled').reduce((a,o)=>a+o.total,0);
+  var totalTodayRev = todayRev + todayOrderRev;
+  var totalMonthRev = monthRev + monthOrderRev;
+  var totalAllRev   = allRev   + allOrderRev;
+
+  safeSet('statSalesToday', todaySales.length + allOrders.filter(o=>o.created_at&&o.created_at.startsWith(today)).length);
   safeSet('statSalesTotal', allSales.length);
-  safeSet('statOrders', orderStats.total||0);
-  safeSet('dashTodayCount', todaySales.length+' satis');
-  safeSet('dashMonthCount', monthSales.length+' satis');
-  safeSet('dashAllCount', allSales.length+' satis');
-  safeSetHTML('dashTodayRev', '&#x20BA;'+todayRev.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}));
-  safeSetHTML('dashMonthRev', '&#x20BA;'+monthRev.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}));
-  safeSetHTML('dashAllRev',   '&#x20BA;'+allRev.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}));
+  safeSet('statOrders', orderStats.total||allOrders.length);
+  safeSet('dashTodayCount', todaySales.length+' satis + '+allOrders.filter(o=>o.created_at&&o.created_at.startsWith(today)).length+' siparis');
+  safeSet('dashMonthCount', monthSales.length+' satis + '+allOrders.filter(o=>o.status!=='cancelled'&&o.created_at&&o.created_at.startsWith(thisMonth)).length+' siparis');
+  safeSet('dashAllCount', allSales.length+' satis + '+allOrders.filter(o=>o.status!=='cancelled').length+' siparis');
+  safeSetHTML('dashTodayRev', '&#x20BA;'+totalTodayRev.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}));
+  safeSetHTML('dashMonthRev', '&#x20BA;'+totalMonthRev.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}));
+  safeSetHTML('dashAllRev',   '&#x20BA;'+totalAllRev.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}));
 
   // Son satışları güncelle
   const recent = allSales.slice(0,6);
