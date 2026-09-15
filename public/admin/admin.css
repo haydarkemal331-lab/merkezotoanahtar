@@ -1175,3 +1175,66 @@ tbody tr:hover td { color: #dde0ec; }
 .dash-sum-card:nth-child(1) { animation-delay: .05s; }
 .dash-sum-card:nth-child(2) { animation-delay: .12s; }
 .dash-sum-card:nth-child(3) { animation-delay: .18s; }
+
+/* ============================================================
+   SIDEBAR COLLAPSE BUTONU + LOGO TOGGLE
+   ============================================================ */
+
+/* Logo tıklanabilir hover efekti */
+.sidebar-logo-icon {
+  transition: all .28s cubic-bezier(.4,0,.2,1);
+}
+.sidebar-logo-icon:hover {
+  filter: drop-shadow(0 0 22px rgba(245,166,35,0.9)) brightness(1.15);
+  transform: scale(1.08) rotate(-5deg);
+}
+.sidebar-logo-icon:active {
+  transform: scale(0.94) rotate(0deg);
+}
+
+/* Alt collapse butonu */
+.sidebar-collapse-btn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 11px;
+  color: var(--muted);
+  font-size: 12px; font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all .28s cubic-bezier(.4,0,.2,1);
+  white-space: nowrap; overflow: hidden;
+}
+.sidebar-collapse-btn:hover {
+  background: rgba(230,57,70,0.1);
+  border-color: rgba(230,57,70,0.3);
+  color: var(--red);
+  box-shadow: 0 0 16px rgba(230,57,70,0.12);
+}
+.sidebar-collapse-btn .scb-icon {
+  font-size: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; min-width: 20px;
+  transition: transform .28s;
+}
+.sidebar-collapse-btn .scb-text {
+  transition: opacity .2s, max-width .3s;
+  opacity: 1; max-width: 120px; overflow: hidden;
+}
+
+/* Daraltılmışken alt buton */
+.admin-sidebar.collapsed .sidebar-collapse-btn {
+  padding: 10px 6px;
+  border-radius: 50%;
+  width: 40px; height: 40px;
+  margin: 10px auto 0;
+}
+.admin-sidebar.collapsed .sidebar-collapse-btn .scb-text {
+  opacity: 0; max-width: 0; pointer-events: none;
+}
+.admin-sidebar.collapsed .sidebar-collapse-btn .scb-icon {
+  transform: rotate(0deg);
+}

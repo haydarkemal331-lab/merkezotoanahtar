@@ -16,9 +16,8 @@
 <div class="admin-layout">
 
   <aside class="admin-sidebar" id="adminSidebar">
-    <button class="sidebar-toggle-btn" id="sidebarToggle" title="Menüyü Daralt / Genişlet">&#x276E;</button>
     <div class="sidebar-logo">
-      <div class="sidebar-logo-icon">
+      <div class="sidebar-logo-icon" id="sidebarLogoBtn" title="Menüyü Daralt / Genişlet" style="cursor:pointer;">
         <svg width="40" height="40" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
           <circle cx="20" cy="20" r="14" stroke="#f5a623" stroke-width="5" fill="none"/>
           <circle cx="20" cy="20" r="6" fill="#f5a623"/>
@@ -84,6 +83,10 @@
     <div class="sidebar-bottom">
       <div class="sidebar-clock" id="adminClock"><span>--</span>:<span>--</span>:<span>--</span></div>
       <button class="btn-logout" onclick="doLogout()">&#x1F6AA; &#199;&#305;k&#305;&#351; Yap</button>
+      <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" onclick="window.toggleSidebar()" title="Menüyü Daralt / Genişlet">
+        <span class="scb-icon" id="sidebarCollapseIcon">&#x276E;</span>
+        <span class="scb-text">Daralt</span>
+      </button>
     </div>
   </aside>
 
@@ -775,24 +778,34 @@
 <script>
 // ─── SIDEBAR COLLAPSE ─────────────────────────────────────────────────────────
 (function() {
-  const sidebar = document.getElementById('adminSidebar');
-  const btn     = document.getElementById('sidebarToggle');
-  if (!sidebar || !btn) return;
+  const sidebar   = document.getElementById('adminSidebar');
+  const logoBtn   = document.getElementById('sidebarLogoBtn');
+  const collapseBtn = document.getElementById('sidebarCollapseBtn');
+  if (!sidebar) return;
 
-  // Önceki durumu hatırla
   const saved = localStorage.getItem('adminSidebarCollapsed');
   if (saved === 'true') sidebar.classList.add('collapsed');
-  updateToggleBtn();
+  updateUI();
 
-  btn.addEventListener('click', function() {
+  // Global fonksiyon — her yerden çağrılabilsin
+  window.toggleSidebar = function() {
     sidebar.classList.toggle('collapsed');
     localStorage.setItem('adminSidebarCollapsed', sidebar.classList.contains('collapsed'));
-    updateToggleBtn();
-  });
+    updateUI();
+  };
 
-  function updateToggleBtn() {
-    btn.innerHTML = sidebar.classList.contains('collapsed') ? '&#x276F;' : '&#x276E;';
-    btn.title = sidebar.classList.contains('collapsed') ? 'Menüyü Genişlet' : 'Menüyü Daralt';
+  if (logoBtn)    logoBtn.addEventListener('click', window.toggleSidebar);
+  if (collapseBtn) collapseBtn.addEventListener('click', window.toggleSidebar);
+
+  function updateUI() {
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    // Collapse buton ikon + text
+    const icon = document.getElementById('sidebarCollapseIcon');
+    const text = collapseBtn ? collapseBtn.querySelector('.scb-text') : null;
+    if (icon) icon.innerHTML = isCollapsed ? '&#x276F;' : '&#x276E;';
+    if (text) text.textContent = isCollapsed ? 'Genişlet' : 'Daralt';
+    // Logo hover tooltip
+    if (logoBtn) logoBtn.title = isCollapsed ? 'Menüyü Genişlet' : 'Menüyü Daralt';
   }
 })();
 // AUTH
