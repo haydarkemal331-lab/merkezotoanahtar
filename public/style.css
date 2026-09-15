@@ -3598,3 +3598,88 @@ body.light-mode .theme-toggle .toggle-thumb { background: #f59e0b; transform: tr
   border-radius: 10px;
 }
 .product-payment-logos svg { display: block; border-radius: 4px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   STOK ACİLİYET + GÖRÜNTÜLENME
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.stock-urgency-badge {
+  position: absolute;
+  bottom: 8px; left: 8px;
+  background: linear-gradient(135deg,#ef4444,#f97316);
+  color: #fff;
+  font-size: 10px; font-weight: 800;
+  padding: 3px 8px; border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(239,68,68,.5);
+  animation: urgencyPulse 1.8s ease infinite;
+  z-index: 3;
+}
+@keyframes urgencyPulse {
+  0%,100% { transform: scale(1); }
+  50%      { transform: scale(1.06); }
+}
+.card-viewers {
+  font-size: 11px; color: var(--muted);
+  margin-top: 4px; margin-bottom: 2px;
+}
+.detail-urgency-badge {
+  display: inline-block;
+  background: linear-gradient(135deg,#ef4444,#f97316);
+  color: #fff;
+  font-size: 11px; font-weight: 800;
+  padding: 3px 10px; border-radius: 20px;
+  margin-left: 8px;
+  animation: urgencyPulse 1.8s ease infinite;
+}
+.detail-viewers {
+  font-size: 12px; color: var(--muted);
+  margin-top: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   SAYAÇ BÖLÜMÜ
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.stats-banner-section {
+  padding: 56px 0;
+  background: linear-gradient(135deg, var(--bg2) 0%, var(--bg3) 100%);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.stats-banner-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 24px;
+}
+.stats-banner-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  transition: var(--trans);
+}
+.stats-banner-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0,0,0,.3);
+  border-color: var(--red);
+}
+.stats-banner-icon { font-size: 32px; margin-bottom: 10px; }
+.stats-banner-item strong {
+  font-size: 36px; font-weight: 900;
+  font-family: 'Rajdhani', sans-serif;
+  color: var(--red);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.stats-banner-label {
+  font-size: 13px; color: var(--muted); line-height: 1.4;
+}
+@media (max-width: 900px) {
+  .stats-banner-grid { grid-template-columns: repeat(3,1fr); }
+}
+@media (max-width: 560px) {
+  .stats-banner-grid { grid-template-columns: repeat(2,1fr); }
+  .stats-banner-item strong { font-size: 28px; }
+}

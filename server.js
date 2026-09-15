@@ -101,6 +101,25 @@ function requireAdmin(req, res, next) {
   res.status(401).json({ error: 'Yetkisiz erişim.' });
 }
 
+// Log yardımcısı — endpoint handler içinden çağrılır
+function adminLog(req, action, detail) {
+  try {
+    db.addLog({
+      action,
+      detail,
+      adminUser: req.session?.adminUsername || 'admin',
+      ip: req.ip || req.headers['x-forwarded-for'] || '-'
+    });
+  } catch(e) { /* log hatası siteyi durdurmasın */ }
+}
+
+// Public: ayarları getir (GA/Pixel ID'leri için)
+app.get('/api/settings', (req, res) => {
+  const s = db.getSettings();
+  // Sadece frontend'in ihtiyacı olan alanları döndür
+  res.json({ ga_id: s.ga_id || '', pixel_id: s.pixel_id || '' });
+});
+
 // ─── PUBLIC API ───────────────────────────────────────────────────────────────
 
 // Ürünler
@@ -142,10 +161,42 @@ app.post('/api/admin/login', (req, res) => {
     return res.status(401).json({ error: 'Kullanıcı adı veya şifre hatalı.' });
   req.session.adminId = admin.id;
   req.session.adminUsername = admin.username;
+  adminLog(req, 'Admin Giriş', `Kullanıcı: ${username}`);
   res.json({ success: true });
 });
 
-app.post('/api/admin/logout', (req, res) => { req.session.destroy(); res.json({ success: true }); });
+app.post('/api/admin/logout', (req, res) => {
+  adminLog(req, 'Admin Çıkış', `Kullanıcı: ${req.session.adminUsername||'?'}`);
+  req.session.destroy();
+  res.json({ success: true });
+});
+
+// ─── AYARLAR (GA / Pixel) ─────────────────────────────────────────────────────
+
+app.get('/api/admin/settings', requireAdmin, (req, res) => {
+  res.json(db.getSettings());
+});
+
+app.put('/api/admin/settings', requireAdmin, (req, res) => {
+  const allowed = ['ga_id', 'pixel_id'];
+  const fields = {};
+  allowed.forEach(k => { if (req.body[k] !== undefined) fields[k] = req.body[k]; });
+  const settings = db.saveSettings(fields);
+  adminLog(req, 'Ayarlar Güncellendi', Object.entries(fields).map(([k,v])=>`${k}=${v||'(silindi)'}`).join(', '));
+  res.json({ success: true, settings });
+});
+
+// ─── ADMIN LOGLAR ─────────────────────────────────────────────────────────────
+
+app.get('/api/admin/logs', requireAdmin, (req, res) => {
+  const { limit = 100, action = '' } = req.query;
+  res.json(db.getLogs({ limit, action }));
+});
+
+app.delete('/api/admin/logs', requireAdmin, (req, res) => {
+  db.clearLogs();
+  res.json({ success: true });
+});
 
 app.get('/api/admin/check', (req, res) => {
   if (req.session?.adminId) res.json({ loggedIn: true, username: req.session.adminUsername });
@@ -161,6 +212,7 @@ app.post('/api/admin/products', requireAdmin, upload.single('image'), (req, res)
   if (!name || !price) return res.status(400).json({ error: 'Ürün adı ve fiyat zorunludur.' });
   const image = req.file ? '/uploads/' + req.file.filename : null;
   const p = db.addProduct({ name, description, price, old_price, category_id, sub_category_id, image, stock, featured: featured === '1', seri_no });
+  adminLog(req, 'Ürün Eklendi', `"${name}" — Fiyat: ${price}₺, Stok: ${stock||0}`);
   res.json({ success: true, id: p.id });
 });
 
@@ -181,6 +233,7 @@ app.put('/api/admin/products/:id', requireAdmin, upload.single('image'), (req, r
     image, stock: parseInt(stock) || 0, featured: featured === '1' ? 1 : 0,
     seri_no: seri_no && seri_no.trim() ? seri_no.trim() : existing.seri_no
   });
+  adminLog(req, 'Ürün Güncellendi', `#${req.params.id} "${name}" — Fiyat: ${price}₺, Stok: ${stock}`);
   res.json({ success: true });
 });
 
@@ -188,6 +241,7 @@ app.delete('/api/admin/products/:id', requireAdmin, (req, res) => {
   const p = db.deleteProduct(req.params.id);
   if (!p) return res.status(404).json({ error: 'Ürün bulunamadı.' });
   if (p.image) { const ip = path.join(__dirname, 'public', p.image); if (fs.existsSync(ip)) fs.unlinkSync(ip); }
+  adminLog(req, 'Ürün Silindi', `#${req.params.id} "${p.name}"`);
   res.json({ success: true });
 });
 
@@ -225,12 +279,14 @@ app.post('/api/admin/sales', requireAdmin, (req, res) => {
   const { product_id, seri_no, product_name, price, note } = req.body;
   if (!product_name || !price) return res.status(400).json({ error: 'Ürün adı ve fiyat zorunludur.' });
   const sale = db.addSale({ product_id, seri_no, product_name, price, note });
+  adminLog(req, 'Satış Eklendi', `"${product_name}" — ${price}₺${seri_no?' Seri:'+seri_no:''}`);
   res.json({ success: true, id: sale.id, sale });
 });
 
 app.delete('/api/admin/sales/:id', requireAdmin, (req, res) => {
   const sale = db.deleteSale(req.params.id);
   if (!sale) return res.status(404).json({ error: 'Satış bulunamadı.' });
+  adminLog(req, 'Satış Silindi', `#${req.params.id} "${sale.product_name}"`);
   res.json({ success: true });
 });
 
@@ -372,6 +428,7 @@ app.post('/api/admin/videos', requireAdmin, (req, res) => {
   if (!url) return res.status(400).json({ error: 'YouTube URL zorunludur.' });
   try {
     const video = db.addVideo({ url, title, description });
+    adminLog(req, 'Video Eklendi', `"${title||url}"`);
     res.json({ success: true, video });
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -382,6 +439,7 @@ app.post('/api/admin/videos', requireAdmin, (req, res) => {
 app.delete('/api/admin/videos/:id', requireAdmin, (req, res) => {
   const video = db.deleteVideo(req.params.id);
   if (!video) return res.status(404).json({ error: 'Video bulunamadı.' });
+  adminLog(req, 'Video Silindi', `#${req.params.id} "${video.title||video.videoId}"`);
   res.json({ success: true });
 });
 
@@ -506,6 +564,7 @@ app.patch('/api/admin/orders/:id/status', requireAdmin, async (req, res) => {
       }
     }
 
+    adminLog(req, 'Sipariş Durumu', `#${req.params.id} → ${status}${trackingNo?' Takip:'+trackingNo:''}`);
     res.json({ success: true, order });
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -528,6 +587,7 @@ app.delete('/api/admin/orders/:id', requireAdmin, (req, res) => {
   try {
     const result = db.deleteOrder(parseInt(req.params.id));
     if (!result) return res.status(404).json({ error: 'Sipariş bulunamadı.' });
+    adminLog(req, 'Sipariş Silindi', `#${req.params.id}`);
     res.json({ success: true });
   } catch(e) { res.status(400).json({ error: e.message }); }
 });
@@ -774,12 +834,17 @@ app.get('/api/admin/reviews', requireAdmin, (req, res) => {
 });
 
 app.patch('/api/admin/reviews/:id/approve', requireAdmin, (req, res) => {
-  try { res.json({ success: true, review: db.approveReview(req.params.id) }); }
+  try {
+    const review = db.approveReview(req.params.id);
+    adminLog(req, 'Yorum Onaylandı', `#${req.params.id}`);
+    res.json({ success: true, review });
+  }
   catch(e) { res.status(400).json({ error: e.message }); }
 });
 
 app.delete('/api/admin/reviews/:id', requireAdmin, (req, res) => {
   db.deleteReview(req.params.id);
+  adminLog(req, 'Yorum Silindi', `#${req.params.id}`);
   res.json({ success: true });
 });
 
@@ -1053,6 +1118,55 @@ app.get('/mesafeli-satis', (req, res) => res.sendFile(path.join(__dirname, 'publ
 app.get('/teslimat-iade', (req, res) => res.sendFile(path.join(__dirname, 'public', 'teslimat-iade.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'login.html')));
 app.get('/admin/panel', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'panel.html')));
+
+// ─── SEO ──────────────────────────────────────────────────────────────────────
+
+app.get('/robots.txt', (req, res) => {
+  const BASE = 'https://merkezotoanahtar.com';
+  res.type('text/plain');
+  res.send(
+    `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\n\nSitemap: ${BASE}/sitemap.xml\n`
+  );
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  const BASE = 'https://merkezotoanahtar.com';
+  const now  = new Date().toISOString().split('T')[0];
+
+  const staticUrls = [
+    { loc: '/',              priority: '1.0', changefreq: 'daily'   },
+    { loc: '/sepet',         priority: '0.5', changefreq: 'weekly'  },
+    { loc: '/giris',         priority: '0.3', changefreq: 'monthly' },
+    { loc: '/gizlilik',      priority: '0.2', changefreq: 'monthly' },
+    { loc: '/mesafeli-satis',priority: '0.2', changefreq: 'monthly' },
+    { loc: '/teslimat-iade', priority: '0.2', changefreq: 'monthly' },
+  ];
+
+  const cats    = db.getCategories().filter(c => c.visible !== false);
+  const catUrls = cats.map(c => ({
+    loc: `/kategori/${c.slug}`, priority: '0.8', changefreq: 'weekly'
+  }));
+
+  const products    = db.getProducts({});
+  const productUrls = products.map(p => ({
+    loc: `/urun/${p.id}`, priority: '0.9', changefreq: 'weekly'
+  }));
+
+  const allUrls = [...staticUrls, ...catUrls, ...productUrls];
+
+  const urlTags = allUrls.map(u => `
+  <url>
+    <loc>${BASE}${u.loc}</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>${u.changefreq}</changefreq>
+    <priority>${u.priority}</priority>
+  </url>`).join('');
+
+  res.type('application/xml');
+  res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urlTags}
+</urlset>`);
+});
 app.use((req, res) => res.status(404).sendFile(path.join(__dirname, 'public', 'index.html')));
 
 app.listen(PORT, () => {

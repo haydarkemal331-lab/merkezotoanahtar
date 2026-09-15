@@ -63,6 +63,12 @@
       <a href="#" onclick="showSection('videos',this)">
         <span class="nav-icon">&#x1F3A5;</span><span class="nav-text">Videolar</span>
       </a>
+      <a href="#" onclick="showSection('settings',this)">
+        <span class="nav-icon">&#x2699;&#xFE0F;</span><span class="nav-text">Ayarlar</span>
+      </a>
+      <a href="#" onclick="showSection('logs',this)">
+        <span class="nav-icon">&#x1F4CB;</span><span class="nav-text">Loglar</span>
+      </a>
       <div class="sidebar-divider"></div>
       <a href="/" target="_blank">
         <span class="nav-icon">&#x1F310;</span><span class="nav-text">Siteyi G&#246;r</span>
@@ -438,6 +444,78 @@
             Ana sayfada günlük rotasyonla gösterilir. Birden fazla video ekleyebilirsiniz.
           </div>
           <div id="videoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:12px;"></div>
+        </div>
+      </div>
+
+      <!-- AYARLAR -->
+      <div id="section-settings" style="display:none">
+        <div class="admin-table-wrap" style="max-width:540px;">
+          <div class="admin-table-header">
+            <h3>&#x2699;&#xFE0F; Site Ayarlar&#305;</h3>
+          </div>
+          <div class="form-group" style="margin-top:16px;">
+            <label>Google Analytics 4 — Ölçüm ID</label>
+            <input type="text" id="settingGaId" placeholder="G-XXXXXXXXXX" style="font-family:monospace;"/>
+            <small style="color:var(--muted);">Google Analytics panelinden alınan Ölçüm ID'si. Örn: G-ABC123XYZ</small>
+          </div>
+          <div class="form-group">
+            <label>Meta (Facebook) Pixel ID</label>
+            <input type="text" id="settingPixelId" placeholder="1234567890123" style="font-family:monospace;"/>
+            <small style="color:var(--muted);">Facebook Business Manager'dan alınan Pixel ID. Sadece rakam.</small>
+          </div>
+          <div style="margin-top:8px;">
+            <button class="btn-primary" onclick="saveSettings()">&#x1F4BE; Kaydet</button>
+            <span id="settingSaved" style="display:none;margin-left:12px;color:var(--green);font-size:13px;">&#x2705; Kaydedildi!</span>
+          </div>
+          <div style="margin-top:20px;padding:14px;background:var(--bg3);border-radius:10px;border:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.7;">
+            <strong style="color:var(--text);">Nasıl Kullanılır?</strong><br/>
+            GA4 için: <a href="https://analytics.google.com" target="_blank" style="color:var(--blue-light);">analytics.google.com</a> → Yönetici → Veri Akışı → Ölçüm ID kopyala<br/>
+            Meta Pixel için: <a href="https://business.facebook.com" target="_blank" style="color:var(--blue-light);">business.facebook.com</a> → Etkinlik Yöneticisi → Pixel ID kopyala<br/>
+            Kaydettikten sonra site yeniden yüklendiğinde otomatik aktif olur.
+          </div>
+        </div>
+      </div>
+
+      <!-- LOGLAR -->
+      <div id="section-logs" style="display:none">
+        <div class="admin-table-wrap">
+          <div class="admin-table-header">
+            <h3>&#x1F4CB; Admin Loglar&#305; (<span id="logCount">0</span>)</h3>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <select id="logActionFilter" onchange="filterLogs()" style="padding:6px 10px;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;">
+                <option value="">Tüm İşlemler</option>
+                <option value="Admin Giriş">Giriş</option>
+                <option value="Ürün Eklendi">Ürün Eklendi</option>
+                <option value="Ürün Güncellendi">Ürün Güncellendi</option>
+                <option value="Ürün Silindi">Ürün Silindi</option>
+                <option value="Satış Eklendi">Satış Eklendi</option>
+                <option value="Satış Silindi">Satış Silindi</option>
+                <option value="Sipariş Durumu">Sipariş Durumu</option>
+                <option value="Sipariş Silindi">Sipariş Silindi</option>
+                <option value="Yorum Onaylandı">Yorum Onaylandı</option>
+                <option value="Yorum Silindi">Yorum Silindi</option>
+                <option value="Video Eklendi">Video Eklendi</option>
+                <option value="Ayarlar Güncellendi">Ayarlar</option>
+              </select>
+              <button class="btn-sm" style="background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.3);" onclick="clearLogs()">&#x1F5D1; Temizle</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;margin-top:12px;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:160px;">Tarih / Saat</th>
+                  <th style="width:160px;">İşlem</th>
+                  <th>Detay</th>
+                  <th style="width:90px;">Admin</th>
+                  <th style="width:130px;">IP</th>
+                </tr>
+              </thead>
+              <tbody id="logsTableBody">
+                <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted);">Yükleniyor...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -989,6 +1067,96 @@ async function deleteVideo(id) {
   else showToast(data.error||'Hata.','error');
 }
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─── AYARLAR ─────────────────────────────────────────────────────────────────
+async function loadSettings() {
+  const s = await fetch('/api/admin/settings').then(r=>r.json()).catch(()=>({}));
+  const gaEl = document.getElementById('settingGaId');
+  const pxEl = document.getElementById('settingPixelId');
+  if(gaEl) gaEl.value = s.ga_id || '';
+  if(pxEl) pxEl.value = s.pixel_id || '';
+}
+
+async function saveSettings() {
+  const ga_id    = document.getElementById('settingGaId')?.value.trim();
+  const pixel_id = document.getElementById('settingPixelId')?.value.trim();
+  const res = await fetch('/api/admin/settings', {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ ga_id, pixel_id })
+  });
+  const data = await res.json();
+  if(data.success) {
+    const saved = document.getElementById('settingSaved');
+    if(saved) { saved.style.display='inline'; setTimeout(()=>saved.style.display='none',3000); }
+    showToast('Ayarlar kaydedildi!','success');
+  } else showToast(data.error||'Hata.','error');
+}
+
+// ─── LOGLAR ──────────────────────────────────────────────────────────────────
+let allLogs = [];
+
+const LOG_ACTION_COLORS = {
+  'Admin Giriş':           '#3b82f6',
+  'Admin Çıkış':           '#6b7280',
+  'Ürün Eklendi':          '#10b981',
+  'Ürün Güncellendi':      '#f59e0b',
+  'Ürün Silindi':          '#ef4444',
+  'Satış Eklendi':         '#10b981',
+  'Satış Silindi':         '#ef4444',
+  'Sipariş Durumu':        '#3b82f6',
+  'Sipariş Silindi':       '#ef4444',
+  'Yorum Onaylandı':       '#10b981',
+  'Yorum Silindi':         '#ef4444',
+  'Video Eklendi':         '#8b5cf6',
+  'Video Silindi':         '#ef4444',
+  'Ayarlar Güncellendi':   '#f59e0b',
+};
+
+async function loadLogs() {
+  allLogs = await fetch('/api/admin/logs?limit=200').then(r=>r.json()).catch(()=>[]);
+  renderLogs(allLogs);
+  const el = document.getElementById('logCount'); if(el) el.textContent = allLogs.length;
+}
+
+function renderLogs(logs) {
+  const tbody = document.getElementById('logsTableBody');
+  if(!tbody) return;
+  if(!logs.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--muted);">Henüz log yok.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = logs.map(l => {
+    const dt = new Date(l.createdAt);
+    const dateStr = dt.toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const timeStr = dt.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const color = LOG_ACTION_COLORS[l.action] || 'var(--muted)';
+    return `<tr>
+      <td style="font-size:12px;color:var(--muted);white-space:nowrap;">
+        <div style="font-weight:600;color:var(--text);">${dateStr}</div>
+        <div style="font-size:11px;">${timeStr}</div>
+      </td>
+      <td><span style="background:${color}22;color:${color};border:1px solid ${color}44;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;">${l.action}</span></td>
+      <td style="font-size:12px;color:var(--text);">${l.detail || '-'}</td>
+      <td style="font-size:12px;color:var(--muted);">${l.adminUser || 'admin'}</td>
+      <td style="font-size:11px;color:var(--muted);font-family:monospace;">${l.ip || '-'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterLogs() {
+  const action = document.getElementById('logActionFilter')?.value || '';
+  const filtered = action ? allLogs.filter(l=>l.action===action) : allLogs;
+  renderLogs(filtered);
+}
+
+async function clearLogs() {
+  if(!confirm('Tüm loglar silinecek. Emin misiniz?')) return;
+  const res = await fetch('/api/admin/logs', {method:'DELETE'});
+  const data = await res.json();
+  if(data.success) { allLogs=[]; renderLogs([]); showToast('Loglar temizlendi.','success'); document.getElementById('logCount').textContent='0'; }
+  else showToast(data.error||'Hata.','error');
+}
+// ─────────────────────────────────────────────────────────────────────────────
 async function loadSalesData(){
   allSales=await fetch('/api/admin/sales').then(r=>r.json());
   renderSalesTable(allSales);
@@ -1194,8 +1362,8 @@ function showSection(name,el){
   document.getElementById('section-'+name).style.display='block';
   document.querySelectorAll('.sidebar-nav a').forEach(a=>a.classList.remove('active'));
   if(el)el.classList.add('active');
-  const titles={dashboard:'Dashboard',sales:'Satislar',products:'Urunler',categories:'Kategoriler',about:'Hakkimizda',posts:'Paylasimlar',orders:'Siparisler',returns:'Iade Talepleri',users:'Uyeler',reviews:'Yorumlar',videos:'Videolar'};
-  const icons={dashboard:'&#x1F4CA;',sales:'&#x1F4B0;',products:'&#x1F4E6;',categories:'&#x1F5C2;',about:'&#x1F3E2;',posts:'&#x1F4F0;',orders:'&#x1F6D2;',returns:'&#x1F504;',users:'&#x1F465;',reviews:'&#x2B50;',videos:'&#x1F3A5;'};
+  const titles={dashboard:'Dashboard',sales:'Satislar',products:'Urunler',categories:'Kategoriler',about:'Hakkimizda',posts:'Paylasimlar',orders:'Siparisler',returns:'Iade Talepleri',users:'Uyeler',reviews:'Yorumlar',videos:'Videolar',settings:'Ayarlar',logs:'Loglar'};
+  const icons={dashboard:'&#x1F4CA;',sales:'&#x1F4B0;',products:'&#x1F4E6;',categories:'&#x1F5C2;',about:'&#x1F3E2;',posts:'&#x1F4F0;',orders:'&#x1F6D2;',returns:'&#x1F504;',users:'&#x1F465;',reviews:'&#x2B50;',videos:'&#x1F3A5;',settings:'&#x2699;&#xFE0F;',logs:'&#x1F4CB;'};
   document.getElementById('pageTitle').textContent=titles[name]||name;
   const iconEl=document.getElementById('pageTitleIcon');if(iconEl)iconEl.innerHTML=icons[name]||'';
   if(name==='products')loadProducts();
@@ -1208,6 +1376,8 @@ function showSection(name,el){
   if(name==='sales'){loadSalesData();loadDashboard();}
   if(name==='posts')loadPosts();
   if(name==='videos')loadVideosAdmin();
+  if(name==='settings')loadSettings();
+  if(name==='logs')loadLogs();
 }
 
 // URUN MODAL

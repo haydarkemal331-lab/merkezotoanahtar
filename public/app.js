@@ -1,5 +1,30 @@
 ﻿// ─── MERKEZ OTO ANAHTAR - Frontend App ───────────────────────────────────────
 
+// ─── GA4 + META PIXEL INJECT ─────────────────────────────────────────────────
+(async function injectAnalytics() {
+  try {
+    const s = await fetch('/api/settings').then(r => r.json());
+
+    // Google Analytics 4
+    if (s.ga_id && s.ga_id.trim()) {
+      const gScript = document.createElement('script');
+      gScript.async = true;
+      gScript.src = 'https://www.googletagmanager.com/gtag/js?id=' + s.ga_id.trim();
+      document.head.appendChild(gScript);
+      const gInline = document.createElement('script');
+      gInline.textContent = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${s.ga_id.trim()}');`;
+      document.head.appendChild(gInline);
+    }
+
+    // Meta (Facebook) Pixel
+    if (s.pixel_id && s.pixel_id.trim()) {
+      const pInline = document.createElement('script');
+      pInline.textContent = `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${s.pixel_id.trim()}');fbq('track','PageView');`;
+      document.head.appendChild(pInline);
+    }
+  } catch(e) { /* sessiz hata */ }
+})();
+
 // ══════════════════════════════════════════════════════════════════════════════
 // TEMA (GECE/GÜNDÜZ) YÖNETİMİ
 // ══════════════════════════════════════════════════════════════════════════════
@@ -128,11 +153,22 @@ function createProductCard(p) {
         ${[1,2,3,4,5].map(i=>`<span style="color:${i<=Math.round(p.review_avg)?'#fbbf24':'#374151'};font-size:12px;">★</span>`).join('')}
         <span style="font-size:10px;color:var(--muted);margin-left:2px;">(${p.review_count})</span>
        </div>` : '';
+  // Stok aciliyet badge'i
+  const urgencyBadge = p.stock > 0 && p.stock <= 5
+    ? `<div class="stock-urgency-badge">🔥 Son ${p.stock} adet!</div>`
+    : '';
+  // Günlük görüntülenme simülasyonu (ürün id'si + günün sayısına göre deterministik)
+  const dayNum = Math.floor(Date.now() / 86400000);
+  const viewCount = ((p.id * 7 + dayNum * 3) % 12) + 3; // 3–14 arası
+  const viewersHtml = p.stock > 0
+    ? `<div class="card-viewers">👁 Bugün ${viewCount} kişi inceledi</div>` : '';
+
   return `
     <div class="product-card">
       <div class="img-wrap" onclick="window.location.href='/urun/${p.id}'" style="cursor:pointer;">
         ${p.image ? `<img src="${p.image}" alt="${p.name}" loading="lazy"/>` : `<div class="no-image">🔑</div>`}
         ${discount > 0 ? `<div class="badge">-%${discount}</div>` : ''}
+        ${urgencyBadge}
       </div>
       <div class="card-body">
         <div class="category-tag">${catName}</div>
@@ -142,6 +178,7 @@ function createProductCard(p) {
           <div class="price">${formatPrice(p.price)}</div>
           ${usdStr ? `<div class="price-usd">≈ ${usdStr}</div>` : ''}
           ${p.old_price ? `<div class="old-price">${formatPrice(p.old_price)}</div>` : ''}
+          ${viewersHtml}
           <div class="card-actions">
             ${p.stock > 0
               ? `<button class="card-cart-btn" onclick="addToCartFromCard(event, ${p.id}, '${p.name.replace(/'/g,"\\'")}')">
@@ -438,9 +475,44 @@ if (PAGE === 'home') {
   loadVideos();
 }
 
+// ─── SAYAÇ ANİMASYONU ────────────────────────────────────────────────────────
+(function initCounters() {
+  const counters = document.querySelectorAll('.stats-counter');
+  if (!counters.length) return;
+  let started = false;
+
+  function animateCounters() {
+    if (started) return;
+    started = true;
+    counters.forEach(el => {
+      const target = parseInt(el.dataset.target, 10);
+      const duration = 2000;
+      const steps = 60;
+      const increment = target / steps;
+      let current = 0;
+      const timer = setInterval(() => {
+        current += increment;
+        if (current >= target) { current = target; clearInterval(timer); }
+        el.textContent = Math.floor(current).toLocaleString('tr-TR') + (el.dataset.suffix || '');
+      }, duration / steps);
+    });
+  }
+
+  // IntersectionObserver ile görünce başlat
+  if ('IntersectionObserver' in window) {
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) { animateCounters(); obs.disconnect(); } });
+    }, { threshold: 0.3 });
+    const section = document.getElementById('statsBanner');
+    if (section) obs.observe(section);
+  } else {
+    // Fallback: sayfa yüklenince hemen başlat
+    animateCounters();
+  }
+})();
+
 // ─── HAKKIMIZDA ───────────────────────────────────────────────────────────────
-async function loadAbout() {
-  const about = await fetch('/api/about').then(r => r.json());
+async function loadAbout() {  const about = await fetch('/api/about').then(r => r.json());
 
   const imgWrap = document.getElementById('aboutImgWrap');
   const textEl  = document.getElementById('aboutText');
@@ -816,6 +888,41 @@ if (PAGE === 'product') {
     const p = await res.json();
     document.title = p.name + ' - Merkez Oto Anahtar';
 
+    // ── Schema Markup (JSON-LD) ─────────────────────────────────────────────
+    const schemaEl = document.getElementById('productSchemaLD');
+    if (schemaEl) {
+      const reviewStats = { avg: p.review_avg || 0, count: p.review_count || 0 };
+      const schema = {
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: p.name,
+        description: p.description || p.name,
+        sku: p.seri_no || ('MOA-' + String(p.id).padStart(5, '0')),
+        image: p.image ? ['https://merkezotoanahtar.com' + p.image] : [],
+        brand: { '@type': 'Brand', name: 'Merkez Oto Anahtar' },
+        offers: {
+          '@type': 'Offer',
+          url: 'https://merkezotoanahtar.com/urun/' + p.id,
+          priceCurrency: 'TRY',
+          price: p.price,
+          availability: p.stock > 0
+            ? 'https://schema.org/InStock'
+            : 'https://schema.org/OutOfStock',
+          seller: { '@type': 'Organization', name: 'Merkez Oto Anahtar' }
+        }
+      };
+      if (reviewStats.count > 0) {
+        schema.aggregateRating = {
+          '@type': 'AggregateRating',
+          ratingValue: reviewStats.avg.toFixed(1),
+          reviewCount: reviewStats.count,
+          bestRating: '5',
+          worstRating: '1'
+        };
+      }
+      schemaEl.textContent = JSON.stringify(schema);
+    }
+
     const breadCatEl  = document.getElementById('breadCat');
     const breadNameEl = document.getElementById('breadName');
     if (breadCatEl) {
@@ -887,7 +994,9 @@ if (PAGE === 'product') {
                 '<span class="product-stock-text '+(p.stock>0?'stock-in-text':'stock-out-text')+'">' +
                   (p.stock>0?'Stokta Var — '+p.stock+' adet':'Stok Tükendi')+
                 '</span>' +
+                (p.stock>0&&p.stock<=5?'<span class="detail-urgency-badge">🔥 Son '+p.stock+' adet!</span>':'')+
               '</div>' +
+              (p.stock>0?(function(){const d=Math.floor(Date.now()/86400000);const v=((p.id*7+d*3)%12)+3;return'<div class="detail-viewers">👁 Bugün '+v+' kişi bu ürünü inceledi</div>';})():'')+
               (p.description?'<div class="product-desc">'+p.description+'</div>':'')+
               stockNotifyBox +
             '</div>' +

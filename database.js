@@ -1155,6 +1155,54 @@ const db = {
     data.videos = data.videos.filter(v => v.id !== parseInt(id));
     writeDB(data);
     return video;
+  },
+
+  // ─── AYARLAR (GA / Pixel / vb.) ───────────────────────────────────────────
+  getSettings() {
+    const data = readDB();
+    return data.settings || {};
+  },
+
+  saveSettings(fields) {
+    const data = readDB();
+    if (!data.settings) data.settings = {};
+    Object.assign(data.settings, fields);
+    writeDB(data);
+    return data.settings;
+  },
+
+  // ─── ADMIN LOGLAR ─────────────────────────────────────────────────────────
+  addLog({ action, detail, adminUser, ip }) {
+    const data = readDB();
+    if (!data.logs) data.logs = [];
+    if (!data._meta.lastLogId) data._meta.lastLogId = 0;
+    data._meta.lastLogId++;
+    const log = {
+      id: data._meta.lastLogId,
+      action,
+      detail: detail || '',
+      adminUser: adminUser || 'admin',
+      ip: ip || '-',
+      createdAt: new Date().toISOString()
+    };
+    data.logs.unshift(log); // Yeniler başta
+    // Max 500 log tut
+    if (data.logs.length > 500) data.logs = data.logs.slice(0, 500);
+    writeDB(data);
+    return log;
+  },
+
+  getLogs({ limit = 100, action = '' } = {}) {
+    const data = readDB();
+    let logs = data.logs || [];
+    if (action) logs = logs.filter(l => l.action === action);
+    return logs.slice(0, parseInt(limit));
+  },
+
+  clearLogs() {
+    const data = readDB();
+    data.logs = [];
+    writeDB(data);
   }
 };
 
