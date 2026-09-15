@@ -137,8 +137,10 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; }
   border:1px solid transparent;
 }
 .sidebar-nav a .nav-icon {
-  font-size:18px; width:24px; text-align:center; flex-shrink:0;
+  font-size:18px; width:24px; min-width:24px; text-align:center; flex-shrink:0;
+  display:inline-flex; align-items:center; justify-content:center;
   transition:var(--trans);
+  line-height:1;
 }
 .sidebar-nav a .nav-text { flex:1; }
 .sidebar-nav a .nav-badge {
@@ -152,6 +154,13 @@ button { cursor: pointer; border: none; outline: none; font-family: inherit; }
   position:absolute; inset:0;
   background:linear-gradient(90deg, rgba(230,57,70,0.08), transparent);
   opacity:0; transition:var(--trans);
+  z-index:0;
+  pointer-events:none;
+}
+.sidebar-nav a .nav-icon,
+.sidebar-nav a .nav-text,
+.sidebar-nav a .nav-badge {
+  position:relative; z-index:1;
 }
 .sidebar-nav a:hover {
   color:#fff; border-color:rgba(255,255,255,0.06);
