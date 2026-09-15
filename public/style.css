@@ -3559,3 +3559,42 @@ body.light-mode .theme-toggle .toggle-thumb { background: #f59e0b; transform: tr
   .video-thumb-item { min-width: 140px; flex-direction: column; align-items: flex-start; }
   .video-thumb-img { width: 100%; height: 80px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ÖDEME LOGOSU STİLLERİ (footer + ürün sayfası)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.footer-payment-logos {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.footer-payment-logos svg { display: block; border-radius: 4px; }
+
+.footer-iyzico-badge {
+  background: #fff;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 900;
+  color: #00AEEF;
+  letter-spacing: -.5px;
+  line-height: 20px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+}
+
+/* Ürün detay sayfasında satın alma altı */
+.product-payment-logos {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.product-payment-logos svg { display: block; border-radius: 4px; }

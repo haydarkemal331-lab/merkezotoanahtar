@@ -894,6 +894,13 @@ if (PAGE === 'product') {
             '<div class="product-actions" style="display:flex;gap:10px;align-items:stretch;">' +
               cartBtn + favBtnHtml +
             '</div>' +
+            '<div class="product-payment-logos">' +
+              '<svg width="46" height="28" viewBox="0 0 46 28" fill="none" xmlns="http://www.w3.org/2000/svg" title="Visa"><rect width="46" height="28" rx="4" fill="#fff"/><text x="5" y="20" font-family="Arial" font-size="14" font-weight="900" fill="#1A1F71">VISA</text></svg>' +
+              '<svg width="42" height="28" viewBox="0 0 42 28" xmlns="http://www.w3.org/2000/svg" title="Mastercard"><rect width="42" height="28" rx="4" fill="#fff"/><circle cx="15" cy="14" r="9" fill="#EB001B"/><circle cx="27" cy="14" r="9" fill="#F79E1B"/><path d="M21 6.8a9 9 0 0 1 0 14.4A9 9 0 0 1 21 6.8z" fill="#FF5F00"/></svg>' +
+              '<div class="footer-iyzico-badge" title="iyzico güvenli ödeme">iyzico</div>' +
+              '<svg width="42" height="28" viewBox="0 0 42 28" xmlns="http://www.w3.org/2000/svg" title="Troy"><rect width="42" height="28" rx="4" fill="#fff"/><text x="5" y="19" font-family="Arial" font-size="12" font-weight="900" fill="#003087">TROY</text></svg>' +
+              '<span style="font-size:11px;color:var(--muted);">🔒 Güvenli Ödeme</span>' +
+            '</div>' +
           '</div>' +
         '</div>' +
         '<div class="product-info-bottom">' +
