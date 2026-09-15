@@ -4,12 +4,101 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Panel - Merkez Oto Anahtar</title>
-  <link rel="stylesheet" href="/admin/admin.css?v=2"/>
+  <link rel="stylesheet" href="/admin/admin.css?v=3"/>
+  <style>
+  /* ─── COLLAPSIBLE SIDEBAR ──────────────────────────────────────────── */
+  .admin-sidebar {
+    width: 260px !important;
+    transition: width .3s cubic-bezier(.4,0,.2,1) !important;
+    overflow: hidden !important;
+    position: relative;
+  }
+  .admin-sidebar.collapsed { width: 64px !important; }
+
+  /* Toggle butonu */
+  .sidebar-toggle-btn {
+    position: absolute; top: 16px; right: -13px; z-index: 200;
+    width: 26px; height: 26px;
+    background: #12141d; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 50%; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: #6b7280; font-size: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.5);
+    transition: all .2s;
+  }
+  .sidebar-toggle-btn:hover { background: #e63946; color: #fff; border-color: #e63946; }
+
+  /* Logo metinleri */
+  .admin-sidebar .sidebar-logo h2,
+  .admin-sidebar .sidebar-logo .brand-sub,
+  .admin-sidebar .sidebar-logo .admin-name {
+    transition: opacity .25s, max-height .25s;
+    opacity: 1; max-height: 60px; overflow: hidden; white-space: nowrap;
+  }
+  .admin-sidebar.collapsed .sidebar-logo h2,
+  .admin-sidebar.collapsed .sidebar-logo .brand-sub,
+  .admin-sidebar.collapsed .sidebar-logo .admin-name {
+    opacity: 0; max-height: 0; pointer-events: none; margin: 0;
+  }
+  .admin-sidebar.collapsed .sidebar-logo { align-items: center; padding: 14px 10px; }
+  .admin-sidebar.collapsed .sidebar-logo .sidebar-logo-icon { justify-content: center; }
+
+  /* Nav linkleri */
+  .admin-sidebar .sidebar-nav a { white-space: nowrap; overflow: hidden; }
+  .admin-sidebar .sidebar-nav a .nav-text,
+  .admin-sidebar .sidebar-nav a .nav-badge {
+    transition: opacity .2s, max-width .25s;
+    opacity: 1; max-width: 200px; overflow: hidden;
+  }
+  .admin-sidebar.collapsed .sidebar-nav a {
+    justify-content: center; padding: 11px 0 !important; gap: 0 !important;
+  }
+  .admin-sidebar.collapsed .sidebar-nav a .nav-text,
+  .admin-sidebar.collapsed .sidebar-nav a .nav-badge {
+    opacity: 0; max-width: 0; pointer-events: none;
+  }
+
+  /* Tooltip daraltılmışken */
+  .admin-sidebar.collapsed .sidebar-nav a[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: fixed;
+    left: 76px;
+    background: #12141d;
+    color: #e8eaf0;
+    font-size: 12px; font-weight: 600;
+    padding: 6px 12px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.08);
+    white-space: nowrap; pointer-events: none;
+    z-index: 9999;
+    box-shadow: 0 4px 16px rgba(0,0,0,.5);
+  }
+
+  /* Saat ve çıkış */
+  .admin-sidebar .sidebar-clock,
+  .admin-sidebar .sidebar-bottom .btn-logout-text {
+    transition: opacity .2s, max-height .2s;
+    opacity: 1; max-height: 60px; overflow: hidden;
+  }
+  .admin-sidebar.collapsed .sidebar-clock {
+    opacity: 0; max-height: 0; margin: 0; pointer-events: none;
+  }
+  .admin-sidebar.collapsed .sidebar-bottom { padding: 8px 4px; justify-content: center; }
+  .admin-sidebar.collapsed .btn-logout { font-size: 0; padding: 8px; width: auto; }
+  .admin-sidebar.collapsed .btn-logout::before { content: '🚪'; font-size: 18px; }
+
+  /* Hover transform sadece açıkken */
+  .admin-sidebar:not(.collapsed) .sidebar-nav a:hover { transform: translateX(2px); }
+  .admin-sidebar.collapsed .sidebar-nav a:hover { transform: none; }
+
+  /* active collapsed */
+  .admin-sidebar.collapsed .sidebar-nav a.active { box-shadow: 0 0 0 1px #e63946; }
+  </style>
 </head>
 <body>
 <div class="admin-layout">
 
-  <aside class="admin-sidebar">
+  <aside class="admin-sidebar" id="adminSidebar">
+    <button class="sidebar-toggle-btn" id="sidebarToggle" title="Menüyü Daralt / Genişlet">&#x276E;</button>
     <div class="sidebar-logo">
       <div class="sidebar-logo-icon">
         <svg width="40" height="40" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
@@ -28,49 +117,49 @@
       </div>
     </div>
     <nav class="sidebar-nav">
-      <a href="#" class="active" onclick="showSection('dashboard',this)">
+      <a href="#" class="active" onclick="showSection('dashboard',this)" data-tooltip="Dashboard">
         <span class="nav-icon">&#x1F4CA;</span><span class="nav-text">Dashboard</span>
       </a>
-      <a href="#" onclick="showSection('sales',this)">
+      <a href="#" onclick="showSection('sales',this)" data-tooltip="Satışlar">
         <span class="nav-icon">&#x1F4B0;</span><span class="nav-text">Sat&#305;&#351;lar</span>
       </a>
-      <a href="#" onclick="showSection('orders',this)">
+      <a href="#" onclick="showSection('orders',this)" data-tooltip="Siparişler">
         <span class="nav-icon">&#x1F6D2;</span><span class="nav-text">Sipari&#351;ler</span>
       </a>
-      <a href="#" onclick="showSection('returns',this)">
+      <a href="#" onclick="showSection('returns',this)" data-tooltip="İade Talepleri">
         <span class="nav-icon">&#x1F504;</span><span class="nav-text">&#304;ade Talepleri</span>
       </a>
-      <a href="#" onclick="showSection('reviews',this)">
+      <a href="#" onclick="showSection('reviews',this)" data-tooltip="Yorumlar">
         <span class="nav-icon">&#x2B50;</span><span class="nav-text">Yorumlar</span>
       </a>
-      <a href="#" onclick="showSection('users',this)">
+      <a href="#" onclick="showSection('users',this)" data-tooltip="Üyeler">
         <span class="nav-icon">&#x1F465;</span><span class="nav-text">Uyeler</span>
       </a>
       <div class="sidebar-divider"></div>
-      <a href="#" onclick="showSection('products',this)">
+      <a href="#" onclick="showSection('products',this)" data-tooltip="Ürünler">
         <span class="nav-icon">&#x1F4E6;</span><span class="nav-text">&#220;r&#252;nler</span>
       </a>
-      <a href="#" onclick="showSection('categories',this)">
+      <a href="#" onclick="showSection('categories',this)" data-tooltip="Kategoriler">
         <span class="nav-icon">&#x1F5C2;</span><span class="nav-text">Kategoriler</span>
       </a>
       <div class="sidebar-divider"></div>
-      <a href="#" onclick="showSection('about',this)">
+      <a href="#" onclick="showSection('about',this)" data-tooltip="Hakkımızda">
         <span class="nav-icon">&#x1F3E2;</span><span class="nav-text">Hakk&#305;m&#305;zda</span>
       </a>
-      <a href="#" onclick="showSection('posts',this)">
+      <a href="#" onclick="showSection('posts',this)" data-tooltip="Paylaşımlar">
         <span class="nav-icon">&#x1F4F0;</span><span class="nav-text">Payla&#351;&#305;mlar</span>
       </a>
-      <a href="#" onclick="showSection('videos',this)">
+      <a href="#" onclick="showSection('videos',this)" data-tooltip="Videolar">
         <span class="nav-icon">&#x1F3A5;</span><span class="nav-text">Videolar</span>
       </a>
-      <a href="#" onclick="showSection('settings',this)">
+      <a href="#" onclick="showSection('settings',this)" data-tooltip="Ayarlar">
         <span class="nav-icon">&#x2699;</span><span class="nav-text">Ayarlar</span>
       </a>
-      <a href="#" onclick="showSection('logs',this)">
+      <a href="#" onclick="showSection('logs',this)" data-tooltip="Loglar">
         <span class="nav-icon">&#x1F4CB;</span><span class="nav-text">Loglar</span>
       </a>
       <div class="sidebar-divider"></div>
-      <a href="/" target="_blank">
+      <a href="/" target="_blank" data-tooltip="Siteyi Gör">
         <span class="nav-icon">&#x1F310;</span><span class="nav-text">Siteyi G&#246;r</span>
       </a>
     </nav>
@@ -766,6 +855,28 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
+// ─── SIDEBAR COLLAPSE ─────────────────────────────────────────────────────────
+(function() {
+  const sidebar = document.getElementById('adminSidebar');
+  const btn     = document.getElementById('sidebarToggle');
+  if (!sidebar || !btn) return;
+
+  // Önceki durumu hatırla
+  const saved = localStorage.getItem('adminSidebarCollapsed');
+  if (saved === 'true') sidebar.classList.add('collapsed');
+  updateToggleBtn();
+
+  btn.addEventListener('click', function() {
+    sidebar.classList.toggle('collapsed');
+    localStorage.setItem('adminSidebarCollapsed', sidebar.classList.contains('collapsed'));
+    updateToggleBtn();
+  });
+
+  function updateToggleBtn() {
+    btn.innerHTML = sidebar.classList.contains('collapsed') ? '&#x276F;' : '&#x276E;';
+    btn.title = sidebar.classList.contains('collapsed') ? 'Menüyü Genişlet' : 'Menüyü Daralt';
+  }
+})();
 // AUTH
 fetch('/api/admin/check').then(r=>r.json()).then(d=>{
   if(!d.loggedIn){window.location.href='/admin';return;}
