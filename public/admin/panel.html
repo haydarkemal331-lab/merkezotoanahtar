@@ -72,6 +72,9 @@
       <a href="#" onclick="showSection('settings',this)" data-tooltip="Ayarlar">
         <span class="nav-icon">&#x2699;</span><span class="nav-text">Ayarlar</span>
       </a>
+      <a href="#" onclick="showSection('coupons',this)" data-tooltip="Kuponlar">
+        <span class="nav-icon">&#x1F3AB;</span><span class="nav-text">Kuponlar</span>
+      </a>
       <a href="#" onclick="showSection('logs',this)" data-tooltip="Loglar">
         <span class="nav-icon">&#x1F4CB;</span><span class="nav-text">Loglar</span>
       </a>
@@ -457,6 +460,34 @@
         </div>
       </div>
 
+      <!-- KUPONLAR -->
+      <div id="section-coupons" style="display:none">
+        <div class="admin-table-wrap">
+          <div class="admin-table-header">
+            <h3>&#x1F3AB; &#304;ndirim Kuponlar&#305; (<span id="couponCount">0</span>)</h3>
+            <button class="btn-primary btn-sm" onclick="openAddCouponModal()">&#x2B; Yeni Kupon</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Kod</th>
+                  <th>&#304;ndirim</th>
+                  <th>Kullan&#305;m</th>
+                  <th>Son Tarih</th>
+                  <th>Not</th>
+                  <th>Durum</th>
+                  <th>&#304;&#351;lem</th>
+                </tr>
+              </thead>
+              <tbody id="couponsTableBody">
+                <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">Y&#252;kleniyor...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- AYARLAR -->
       <div id="section-settings" style="display:none">
         <div class="admin-table-wrap" style="max-width:540px;">
@@ -598,6 +629,61 @@
       <div class="modal-footer">
         <button type="button" class="btn-gray" onclick="closePostModal()">İptal</button>
         <button type="submit" class="btn-save" id="postSaveBtn">Kaydet</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- KUPON MODAL -->
+<div class="modal-overlay hidden" id="couponModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h3>&#x1F3AB; Yeni &#304;ndirim Kuponu</h3>
+      <button class="modal-close" onclick="closeCouponModal()">&#x2715;</button>
+    </div>
+    <form id="couponForm" onsubmit="saveCoupon(event)">
+      <div class="form-group">
+        <label>Kupon Kodu *</label>
+        <input type="text" id="couponCode" placeholder="Örn: YENI10 veya ARKADAS20" required
+          style="font-family:monospace;text-transform:uppercase;letter-spacing:2px;font-size:15px;font-weight:700;"
+          oninput="this.value=this.value.toUpperCase().replace(/\s/g,'')"/>
+        <small style="color:var(--muted);">Büyük harf, rakam ve tire kullanabilirsiniz. Boşluk olmaz.</small>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>&#304;ndirim M&#305;ktar&#305; *</label>
+          <input type="number" id="couponDiscount" min="1" max="100" step="0.01" placeholder="10" required/>
+        </div>
+        <div class="form-group">
+          <label>&#304;ndirim T&#252;r&#252;</label>
+          <select id="couponType">
+            <option value="percent">% Yüzde</option>
+            <option value="fixed">₺ Sabit Tutar</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>Son Kullan&#305;m Tarihi</label>
+          <input type="date" id="couponExpires"/>
+          <small style="color:var(--muted);">Boş bırakılırsa süresiz geçerli.</small>
+        </div>
+        <div class="form-group">
+          <label>Maksimum Kullan&#305;m</label>
+          <input type="number" id="couponMaxUses" min="1" value="1" placeholder="1"/>
+          <small style="color:var(--muted);">Kaç kez kullanılabilir.</small>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Not <span style="color:var(--muted);font-weight:400;">(isteğe bağlı)</span></label>
+        <input type="text" id="couponNote" placeholder="Örn: Ahmet Bey için, arkadaş indirimi..."/>
+      </div>
+      <div style="padding:12px 14px;background:rgba(230,57,70,0.06);border:1px solid rgba(230,57,70,0.2);border-radius:10px;font-size:12px;color:var(--muted);margin-bottom:4px;">
+        🔒 Bu kupon kodunu sadece vermek istediğiniz kişiye paylaşın. Kod başka biri tarafından bulunamaz, rastgele denenemiyor.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-gray" onclick="closeCouponModal()">İptal</button>
+        <button type="submit" class="btn-save" id="couponSaveBtn">&#x1F3AB; Oluştur</button>
       </div>
     </form>
   </div>
@@ -1199,6 +1285,92 @@ async function clearLogs() {
   else showToast(data.error||'Hata.','error');
 }
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─── KUPON SİSTEMİ ───────────────────────────────────────────────────────────
+let allCoupons = [];
+
+async function loadCoupons() {
+  allCoupons = await fetch('/api/admin/coupons').then(r=>r.json()).catch(()=>[]);
+  renderCouponsTable();
+  const el = document.getElementById('couponCount'); if(el) el.textContent = allCoupons.length;
+}
+
+function renderCouponsTable() {
+  const tbody = document.getElementById('couponsTableBody'); if(!tbody) return;
+  if(!allCoupons.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">Henüz kupon yok.</td></tr>'; return;
+  }
+  tbody.innerHTML = allCoupons.map(c => {
+    const isExpired  = c.expiresAt && new Date(c.expiresAt) < new Date();
+    const isFull     = c.usedCount >= c.maxUses;
+    const statusColor = (!c.active || isExpired || isFull) ? 'var(--red)' : '#4ade80';
+    const statusText  = !c.active ? 'Pasif' : isExpired ? 'Süresi Doldu' : isFull ? 'Limit Doldu' : 'Aktif';
+    const discStr    = c.type === 'percent' ? `%${c.discount}` : `₺${c.discount}`;
+    const expStr     = c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('tr-TR') : 'Süresiz';
+    return `<tr>
+      <td><span style="font-family:monospace;font-weight:800;font-size:14px;color:#fff;letter-spacing:2px;background:rgba(255,255,255,0.06);padding:4px 10px;border-radius:6px;">${c.code}</span></td>
+      <td><span style="color:${c.type==='percent'?'#fbbf24':'#4ade80'};font-weight:700;">${discStr} indirim</span></td>
+      <td style="font-size:12px;">${c.usedCount} / ${c.maxUses}</td>
+      <td style="font-size:12px;color:${isExpired?'var(--red)':'var(--muted)'};">${expStr}</td>
+      <td style="font-size:12px;color:var(--muted);">${c.note||'-'}</td>
+      <td><span style="background:${statusColor}22;color:${statusColor};border:1px solid ${statusColor}44;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;">${statusText}</span></td>
+      <td>
+        <button class="btn-sm btn-edit" onclick="toggleCoupon(${c.id})" title="${c.active?'Pasife al':'Aktife al'}" style="margin-right:4px;">${c.active?'⏸':'▶'}</button>
+        <button class="btn-sm btn-delete" onclick="deleteCoupon(${c.id},'${c.code}')">Sil</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openAddCouponModal() {
+  document.getElementById('couponForm').reset();
+  document.getElementById('couponMaxUses').value = '1';
+  // Varsayılan tarih: 30 gün sonra
+  const d = new Date(); d.setDate(d.getDate() + 30);
+  document.getElementById('couponExpires').value = d.toISOString().split('T')[0];
+  document.getElementById('couponModal').classList.remove('hidden');
+}
+function closeCouponModal() {
+  document.getElementById('couponModal').classList.add('hidden');
+}
+
+async function saveCoupon(e) {
+  e.preventDefault();
+  const btn = document.getElementById('couponSaveBtn'); btn.disabled=true; btn.textContent='...';
+  const body = {
+    code:     document.getElementById('couponCode').value.trim(),
+    discount: document.getElementById('couponDiscount').value,
+    type:     document.getElementById('couponType').value,
+    expiresAt:document.getElementById('couponExpires').value || null,
+    maxUses:  document.getElementById('couponMaxUses').value || 1,
+    note:     document.getElementById('couponNote').value.trim()
+  };
+  const res = await fetch('/api/admin/coupons', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const data = await res.json();
+  btn.disabled=false; btn.textContent='🎫 Oluştur';
+  if(data.success) {
+    showToast('Kupon oluşturuldu: '+data.coupon.code,'success');
+    closeCouponModal();
+    loadCoupons();
+  } else showToast(data.error||'Hata.','error');
+}
+
+async function deleteCoupon(id, code) {
+  if(!confirm('"'+code+'" kodlu kuponu silmek istiyor musunuz?')) return;
+  const res = await fetch('/api/admin/coupons/'+id,{method:'DELETE'});
+  const data = await res.json();
+  if(data.success) { showToast('Kupon silindi.','success'); loadCoupons(); }
+  else showToast(data.error||'Hata.','error');
+}
+
+async function toggleCoupon(id) {
+  const res = await fetch('/api/admin/coupons/'+id+'/toggle',{method:'PATCH'});
+  const data = await res.json();
+  if(data.success) { showToast(data.coupon.active?'Kupon aktifleştirildi.':'Kupon pasife alındı.','success'); loadCoupons(); }
+  else showToast(data.error||'Hata.','error');
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function loadSalesData(){
   allSales=await fetch('/api/admin/sales').then(r=>r.json());
   renderSalesTable(allSales);
@@ -1404,8 +1576,8 @@ function showSection(name,el){
   document.getElementById('section-'+name).style.display='block';
   document.querySelectorAll('.sidebar-nav a').forEach(a=>a.classList.remove('active'));
   if(el)el.classList.add('active');
-  const titles={dashboard:'Dashboard',sales:'Satislar',products:'Urunler',categories:'Kategoriler',about:'Hakkimizda',posts:'Paylasimlar',orders:'Siparisler',returns:'Iade Talepleri',users:'Uyeler',reviews:'Yorumlar',videos:'Videolar',settings:'Ayarlar',logs:'Loglar'};
-  const icons={dashboard:'&#x1F4CA;',sales:'&#x1F4B0;',products:'&#x1F4E6;',categories:'&#x1F5C2;',about:'&#x1F3E2;',posts:'&#x1F4F0;',orders:'&#x1F6D2;',returns:'&#x1F504;',users:'&#x1F465;',reviews:'&#x2B50;',videos:'&#x1F3A5;',settings:'&#x2699;&#xFE0F;',logs:'&#x1F4CB;'};
+  const titles={dashboard:'Dashboard',sales:'Satislar',products:'Urunler',categories:'Kategoriler',about:'Hakkimizda',posts:'Paylasimlar',orders:'Siparisler',returns:'Iade Talepleri',users:'Uyeler',reviews:'Yorumlar',videos:'Videolar',settings:'Ayarlar',logs:'Loglar',coupons:'Kuponlar'};
+  const icons={dashboard:'&#x1F4CA;',sales:'&#x1F4B0;',products:'&#x1F4E6;',categories:'&#x1F5C2;',about:'&#x1F3E2;',posts:'&#x1F4F0;',orders:'&#x1F6D2;',returns:'&#x1F504;',users:'&#x1F465;',reviews:'&#x2B50;',videos:'&#x1F3A5;',settings:'&#x2699;',logs:'&#x1F4CB;',coupons:'&#x1F3AB;'};
   document.getElementById('pageTitle').textContent=titles[name]||name;
   const iconEl=document.getElementById('pageTitleIcon');if(iconEl)iconEl.innerHTML=icons[name]||'';
   if(name==='products')loadProducts();
@@ -1420,6 +1592,7 @@ function showSection(name,el){
   if(name==='videos')loadVideosAdmin();
   if(name==='settings')loadSettings();
   if(name==='logs')loadLogs();
+  if(name==='coupons')loadCoupons();
 }
 
 // URUN MODAL

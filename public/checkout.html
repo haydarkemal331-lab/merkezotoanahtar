@@ -239,9 +239,16 @@ async function initCheckout() {
   setTimeout(renderSavedAddresses, 50);
 }
 
+let appliedCouponCode = null;
+let appliedDiscount   = 0;
+let checkoutSubtotal  = 0;
+let checkoutShipping  = 0;
+
 function renderCheckout(cartData) {
   const subtotal    = cartData.total;
-  const shippingFee = subtotal >= 500 ? 0 : 29.90;
+  checkoutSubtotal  = subtotal;
+  checkoutShipping  = subtotal >= 500 ? 0 : 29.90;
+  const shippingFee = checkoutShipping;
   const grandTotal  = subtotal + shippingFee;
 
   document.getElementById('checkoutContent').innerHTML = `
@@ -311,7 +318,22 @@ function renderCheckout(cartData) {
           <div class="os-divider"></div>
           <div class="os-row"><span>Ara Toplam</span><span class="val">₺${subtotal.toLocaleString('tr-TR',{minimumFractionDigits:2})}</span></div>
           <div class="os-row"><span>Kargo</span><span class="val" style="${shippingFee===0?'color:#4ade80;':''}">${shippingFee===0?'Ücretsiz 🎉':'₺'+shippingFee.toFixed(2)}</span></div>
-          <div class="os-row total"><span>Toplam</span><span class="val">₺${grandTotal.toLocaleString('tr-TR',{minimumFractionDigits:2})}</span></div>
+          <div id="couponDiscountRow" class="os-row" style="display:none;color:#4ade80;"><span>İndirim Kuponu</span><span class="val" id="couponDiscountVal" style="color:#4ade80;"></span></div>
+          <div class="os-row total"><span>Toplam</span><span class="val" id="grandTotalVal">₺${grandTotal.toLocaleString('tr-TR',{minimumFractionDigits:2})}</span></div>
+          <!-- Kupon Alanı -->
+          <div style="margin:14px 0 4px;padding:14px;background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.1);border-radius:10px;">
+            <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.8px;">🎫 İndirim Kuponu</div>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="couponInput" placeholder="Kupon kodunuzu girin"
+                style="flex:1;padding:9px 12px;background:var(--bg3);border:1.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--text);outline:none;font-family:monospace;text-transform:uppercase;letter-spacing:1px;"
+                oninput="this.value=this.value.toUpperCase()"/>
+              <button onclick="applyCoupon()" id="couponApplyBtn"
+                style="padding:9px 16px;background:rgba(230,57,70,0.12);border:1px solid rgba(230,57,70,0.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;">
+                Uygula
+              </button>
+            </div>
+            <div id="couponMsg" style="margin-top:7px;font-size:12px;display:none;"></div>
+          </div>
           <button class="place-order-btn" id="placeOrderBtn" onclick="placeOrder()">
             <span>✅</span> Siparişi Onayla
           </button>
@@ -331,8 +353,45 @@ function fillSavedAddress() {
   document.getElementById('addr_phone').value    = currentUser.phone    || '';
 }
 
-function selectPayment(method) {
-  if (method === 'iyzico') return; // henüz aktif değil
+async function applyCoupon() {
+  const code = document.getElementById('couponInput')?.value?.trim();
+  const msg  = document.getElementById('couponMsg');
+  const btn  = document.getElementById('couponApplyBtn');
+  if (!code) { if(msg){msg.style.display='block';msg.style.color='#f87171';msg.textContent='Kupon kodu girin.';} return; }
+
+  btn.disabled = true; btn.textContent = '...';
+  const res  = await fetch('/api/coupons/validate', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ code, cartTotal: checkoutSubtotal })
+  });
+  const data = await res.json();
+  btn.disabled = false; btn.textContent = 'Uygula';
+
+  if (data.success) {
+    appliedCouponCode = code;
+    appliedDiscount   = data.discountAmount;
+    const newTotal    = Math.max(0, checkoutSubtotal + checkoutShipping - appliedDiscount);
+    // Satırları güncelle
+    const discRow = document.getElementById('couponDiscountRow');
+    const discVal = document.getElementById('couponDiscountVal');
+    const totalEl = document.getElementById('grandTotalVal');
+    if(discRow) discRow.style.display = 'flex';
+    if(discVal) discVal.textContent   = '-₺' + appliedDiscount.toLocaleString('tr-TR',{minimumFractionDigits:2});
+    if(totalEl) totalEl.textContent   = '₺' + newTotal.toLocaleString('tr-TR',{minimumFractionDigits:2});
+    if(msg) { msg.style.display='block'; msg.style.color='#4ade80';
+      const c = data.coupon;
+      msg.textContent = '✅ Kupon uygulandı! ' + (c.type==='percent'?'%'+c.discount+' indirim':'₺'+c.discount+' indirim') + ' — ' + appliedDiscount.toLocaleString('tr-TR',{minimumFractionDigits:2}) + '₺ kazandınız.';
+    }
+    document.getElementById('couponInput').disabled = true;
+    btn.textContent = '✓ Uygulandı'; btn.style.color = '#4ade80';
+  } else {
+    appliedCouponCode = null; appliedDiscount = 0;
+    if(msg) { msg.style.display='block'; msg.style.color='#f87171'; msg.textContent = '❌ ' + (data.error||'Geçersiz kupon.'); }
+  }
+}
+
+function selectPayment(method) {  if (method === 'iyzico') return; // henüz aktif değil
   selectedPayment = method;
   document.querySelectorAll('.payment-method').forEach(el => el.classList.remove('selected'));
   document.getElementById('pm-' + method).classList.add('selected');
@@ -379,7 +438,7 @@ async function placeOrder() {
   const res  = await fetch('/api/orders', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ address, city, district, zip, phone, note })
+    body: JSON.stringify({ address, city, district, zip, phone, note, couponCode: appliedCouponCode || undefined })
   });
   const data = await res.json();
 

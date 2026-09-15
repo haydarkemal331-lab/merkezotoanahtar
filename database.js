@@ -1203,6 +1203,85 @@ const db = {
     const data = readDB();
     data.logs = [];
     writeDB(data);
+  },
+
+  // ─── KUPON SİSTEMİ ────────────────────────────────────────────────────────
+  getCoupons() {
+    const data = readDB();
+    return (data.coupons || []).sort((a, b) => b.id - a.id);
+  },
+
+  addCoupon({ code, discount, type = 'percent', expiresAt, maxUses = 1, note = '' }) {
+    const data = readDB();
+    if (!data.coupons) data.coupons = [];
+    if (!data._meta.lastCouponId) data._meta.lastCouponId = 0;
+    // Kod benzersiz olmalı
+    const existing = data.coupons.find(c => c.code.toUpperCase() === code.toUpperCase());
+    if (existing) throw new Error('Bu kupon kodu zaten var.');
+    data._meta.lastCouponId++;
+    const coupon = {
+      id: data._meta.lastCouponId,
+      code: code.toUpperCase().trim(),
+      discount: parseFloat(discount),
+      type,           // 'percent' | 'fixed'
+      expiresAt: expiresAt || null,
+      maxUses: parseInt(maxUses) || 1,
+      usedCount: 0,
+      note: note || '',
+      active: true,
+      createdAt: new Date().toISOString()
+    };
+    data.coupons.push(coupon);
+    writeDB(data);
+    return coupon;
+  },
+
+  deleteCoupon(id) {
+    const data = readDB();
+    const coupon = (data.coupons || []).find(c => c.id === parseInt(id));
+    if (!coupon) return null;
+    data.coupons = data.coupons.filter(c => c.id !== parseInt(id));
+    writeDB(data);
+    return coupon;
+  },
+
+  toggleCoupon(id) {
+    const data = readDB();
+    const coupon = (data.coupons || []).find(c => c.id === parseInt(id));
+    if (!coupon) return null;
+    coupon.active = !coupon.active;
+    writeDB(data);
+    return coupon;
+  },
+
+  validateCoupon(code, cartTotal) {
+    const data = readDB();
+    const coupon = (data.coupons || []).find(c => c.code === code.toUpperCase().trim());
+    if (!coupon)        throw new Error('Kupon kodu bulunamadı.');
+    if (!coupon.active) throw new Error('Bu kupon artık geçerli değil.');
+    if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date())
+                        throw new Error('Kupon süresi dolmuş.');
+    if (coupon.usedCount >= coupon.maxUses)
+                        throw new Error('Bu kupon kullanım limitine ulaşmış.');
+    // İndirim miktarını hesapla
+    let discountAmount = 0;
+    if (coupon.type === 'percent') {
+      discountAmount = (cartTotal * coupon.discount) / 100;
+    } else {
+      discountAmount = Math.min(coupon.discount, cartTotal);
+    }
+    return { coupon, discountAmount: parseFloat(discountAmount.toFixed(2)) };
+  },
+
+  useCoupon(code) {
+    const data = readDB();
+    const coupon = (data.coupons || []).find(c => c.code === code.toUpperCase().trim());
+    if (!coupon) return null;
+    coupon.usedCount = (coupon.usedCount || 0) + 1;
+    // Limit dolunca deaktif et
+    if (coupon.usedCount >= coupon.maxUses) coupon.active = false;
+    writeDB(data);
+    return coupon;
   }
 };
 

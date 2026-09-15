@@ -198,6 +198,54 @@ app.delete('/api/admin/logs', requireAdmin, (req, res) => {
   res.json({ success: true });
 });
 
+// ─── KUPON API ────────────────────────────────────────────────────────────────
+
+// Public: kupon doğrula
+app.post('/api/coupons/validate', (req, res) => {
+  const { code, cartTotal } = req.body;
+  if (!code) return res.status(400).json({ error: 'Kupon kodu gerekli.' });
+  try {
+    const result = db.validateCoupon(code, parseFloat(cartTotal) || 0);
+    res.json({ success: true, ...result });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Admin: tüm kuponlar
+app.get('/api/admin/coupons', requireAdmin, (req, res) => {
+  res.json(db.getCoupons());
+});
+
+// Admin: kupon oluştur
+app.post('/api/admin/coupons', requireAdmin, (req, res) => {
+  const { code, discount, type, expiresAt, maxUses, note } = req.body;
+  if (!code || !discount) return res.status(400).json({ error: 'Kod ve indirim zorunludur.' });
+  try {
+    const coupon = db.addCoupon({ code, discount, type, expiresAt, maxUses, note });
+    adminLog(req, 'Kupon Oluşturuldu', `${coupon.code} — %${coupon.discount} indirim`);
+    res.json({ success: true, coupon });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Admin: kupon sil
+app.delete('/api/admin/coupons/:id', requireAdmin, (req, res) => {
+  const coupon = db.deleteCoupon(req.params.id);
+  if (!coupon) return res.status(404).json({ error: 'Kupon bulunamadı.' });
+  adminLog(req, 'Kupon Silindi', `${coupon.code}`);
+  res.json({ success: true });
+});
+
+// Admin: kupon aktif/pasif
+app.patch('/api/admin/coupons/:id/toggle', requireAdmin, (req, res) => {
+  const coupon = db.toggleCoupon(req.params.id);
+  if (!coupon) return res.status(404).json({ error: 'Kupon bulunamadı.' });
+  adminLog(req, 'Kupon Durum', `${coupon.code} → ${coupon.active ? 'Aktif' : 'Pasif'}`);
+  res.json({ success: true, coupon });
+});
+
 app.get('/api/admin/check', (req, res) => {
   if (req.session?.adminId) res.json({ loggedIn: true, username: req.session.adminUsername });
   else res.json({ loggedIn: false });
@@ -447,7 +495,7 @@ app.delete('/api/admin/videos/:id', requireAdmin, (req, res) => {
 
 // Sipariş oluştur (müşteri)
 app.post('/api/orders', requireUser, (req, res) => {
-  const { address, city, district, zip, phone, note } = req.body;
+  const { address, city, district, zip, phone, note, couponCode } = req.body;
   if (!address || !city || !phone)
     return res.status(400).json({ error: 'Adres, şehir ve telefon zorunludur.' });
 
@@ -464,13 +512,31 @@ app.post('/api/orders', requireUser, (req, res) => {
   const subtotal    = cartItems.reduce((s, i) => s + i.price * i.quantity, 0);
   const shippingFee = subtotal >= 500 ? 0 : 29.90;
 
+  // Kupon kontrolü
+  let discountAmount = 0;
+  let appliedCoupon  = null;
+  if (couponCode && couponCode.trim()) {
+    try {
+      const { coupon, discountAmount: da } = db.validateCoupon(couponCode, subtotal);
+      discountAmount = da;
+      appliedCoupon  = coupon;
+    } catch (e) {
+      return res.status(400).json({ error: e.message });
+    }
+  }
+
   try {
     const order = db.createOrder({
       userId: req.session.userId,
       items: cartItems,
       address, city, district, zip, phone, note,
-      shippingFee
+      shippingFee,
+      discountAmount,
+      couponCode: appliedCoupon ? appliedCoupon.code : null
     });
+
+    // Kupon kullanıldı olarak işaretle
+    if (appliedCoupon) db.useCoupon(appliedCoupon.code);
 
     // Sipariş alındı maili + SMS gönder (arka planda)
     const user = db.getUserById(req.session.userId);

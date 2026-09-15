@@ -1,5 +1,43 @@
 ﻿// ─── MERKEZ OTO ANAHTAR - Frontend App ───────────────────────────────────────
 
+// ─── LAZY LOAD + FADE-IN ─────────────────────────────────────────────────────
+(function initLazyLoad() {
+  // Tüm img'lere loading="lazy" ekle (statik HTML'de eksik olabilir)
+  document.querySelectorAll('img:not([loading])').forEach(img => {
+    img.setAttribute('loading', 'lazy');
+  });
+
+  // IntersectionObserver ile fade-in animasyonu
+  if (!('IntersectionObserver' in window)) return;
+
+  const fadeObs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('img-loaded');
+        fadeObs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.05, rootMargin: '0px 0px 80px 0px' });
+
+  function observeImages() {
+    document.querySelectorAll('img:not(.img-loaded)').forEach(img => {
+      img.classList.add('img-lazy');
+      if (img.complete && img.naturalWidth > 0) {
+        img.classList.add('img-loaded');
+      } else {
+        img.addEventListener('load', () => img.classList.add('img-loaded'), { once: true });
+        fadeObs.observe(img);
+      }
+    });
+  }
+
+  // Mevcut ve sonradan eklenen img'leri izle
+  observeImages();
+  // DOM değiştiğinde yeni img'leri de al
+  const mutObs = new MutationObserver(() => observeImages());
+  mutObs.observe(document.body, { childList: true, subtree: true });
+})();
+
 // ─── GA4 + META PIXEL INJECT ─────────────────────────────────────────────────
 (async function injectAnalytics() {
   try {
@@ -473,6 +511,8 @@ if (PAGE === 'home') {
   loadAbout();
   loadPosts();
   loadVideos();
+  // Son görüntülenenler (ana sayfa)
+  renderRecentSection('recentSection');
 }
 
 // ─── SAYAÇ ANİMASYONU ────────────────────────────────────────────────────────
@@ -801,6 +841,7 @@ if (PAGE === 'category') {
   };
 
   initCategoryPage();
+  renderRecentSection('recentSection');
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -887,6 +928,9 @@ if (PAGE === 'product') {
     }
     const p = await res.json();
     document.title = p.name + ' - Merkez Oto Anahtar';
+
+    // Son görüntülenenler kaydı
+    saveRecentProduct(p);
 
     // ── Schema Markup (JSON-LD) ─────────────────────────────────────────────
     const schemaEl = document.getElementById('productSchemaLD');
@@ -988,6 +1032,25 @@ if (PAGE === 'product') {
                 '</div>' +
                 (p.old_price?'<div class="product-price-old">İndirim öncesi: '+formatPrice(p.old_price)+'</div>':'')+
                 '<div class="product-price-usd"><span id="productPriceUsd" data-try="'+p.price+'">≈ dolar hesaplanıyor...</span><span style="color:var(--muted);margin-left:4px;">• Anlık kur</span></div>' +
+                // Taksit hesaplayıcı
+                (p.stock > 0 ? (function() {
+                  const taksitler = [
+                    { ay: 3,  oran: 0 },
+                    { ay: 6,  oran: 0.04 },
+                    { ay: 9,  oran: 0.08 },
+                    { ay: 12, oran: 0.12 }
+                  ];
+                  const rows = taksitler.map(t => {
+                    const toplam = p.price * (1 + t.oran);
+                    const aylik  = toplam / t.ay;
+                    return `<div class="taksit-row">
+                      <span class="taksit-ay">${t.ay} Taksit</span>
+                      <span class="taksit-aylik">${aylik.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})} ₺/ay</span>
+                      <span class="taksit-toplam">${t.oran>0?'Toplam: '+toplam.toLocaleString('tr-TR',{minimumFractionDigits:2})+'₺':'Faizsiz 🎉'}</span>
+                    </div>`;
+                  }).join('');
+                  return '<div class="taksit-box"><div class="taksit-header" onclick="this.parentElement.classList.toggle(\'open\')">💳 Taksit Seçenekleri <span class="taksit-arrow">▾</span></div><div class="taksit-list">'+rows+'</div></div>';
+                })() : '') +
               '</div>' +
               '<div class="product-stock-row">' +
                 '<div class="product-stock-dot '+(p.stock>0?'stock-dot-in':'stock-dot-out')+'"></div>' +
@@ -1156,6 +1219,9 @@ if (PAGE === 'product') {
         if (grid) grid.innerHTML = related.map(createProductCard).join('');
       }
     }
+
+    // Son Görüntülenenler şeridi (bu üründen başkası)
+    renderRecentSection('recentSection', p.id);
   }
 
   loadProductDetail();
@@ -1183,6 +1249,71 @@ async function checkFav(productId) {
   const data = await res.json();
   return data.isFav;
 }
+
+// ─── SON GÖRÜNTÜLENENLERn ────────────────────────────────────────────────────
+const RECENT_KEY   = 'moa_recent_products';
+const RECENT_LIMIT = 8;
+
+function saveRecentProduct(product) {
+  try {
+    let recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+    // Varsa çıkar, başa ekle
+    recent = recent.filter(p => p.id !== product.id);
+    recent.unshift({
+      id:       product.id,
+      name:     product.name,
+      price:    product.price,
+      old_price:product.old_price || null,
+      image:    product.image || null,
+      category_name: product.category_name || '',
+      review_avg:    product.review_avg || 0,
+      review_count:  product.review_count || 0,
+      stock:    product.stock
+    });
+    if (recent.length > RECENT_LIMIT) recent = recent.slice(0, RECENT_LIMIT);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+  } catch(e) {}
+}
+
+function getRecentProducts(excludeId = null) {
+  try {
+    const recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+    return excludeId ? recent.filter(p => p.id !== excludeId) : recent;
+  } catch(e) { return []; }
+}
+
+function renderRecentSection(containerId, excludeId = null) {
+  const recent = getRecentProducts(excludeId);
+  if (!recent.length) return;
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.style.display = 'block';
+  const grid = container.querySelector('.recent-grid');
+  if (!grid) return;
+  grid.innerHTML = recent.map(p => {
+    const discount = p.old_price && p.old_price > p.price
+      ? Math.round((1 - p.price / p.old_price) * 100) : 0;
+    const stars = p.review_avg
+      ? [1,2,3,4,5].map(i => `<span style="color:${i<=Math.round(p.review_avg)?'#fbbf24':'#374151'};font-size:11px;">★</span>`).join('') : '';
+    return `
+      <div class="product-card" onclick="window.location.href='/urun/${p.id}'" style="cursor:pointer;">
+        <div class="img-wrap">
+          ${p.image ? `<img src="${p.image}" alt="${p.name}" loading="lazy"/>` : `<div class="no-image">🔑</div>`}
+          ${discount > 0 ? `<div class="badge">-%${discount}</div>` : ''}
+        </div>
+        <div class="card-body">
+          <div class="category-tag">${p.category_name || 'Ürün'}</div>
+          <h3>${p.name}</h3>
+          <div class="price-box">
+            ${stars ? `<div style="margin-bottom:4px;">${stars}</div>` : ''}
+            <div class="price">${formatPrice(p.price)}</div>
+            ${p.old_price ? `<div class="old-price">${formatPrice(p.old_price)}</div>` : ''}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ─── YORUM FONKSİYONLARI ─────────────────────────────────────────────────────
 function renderStars(rating, size = 16) {
