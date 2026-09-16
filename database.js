@@ -1321,6 +1321,42 @@ const db = {
     const now = Date.now();
     data.otps = (data.otps || []).filter(o => o.expires > now);
     writeDB(data);
+  },
+
+  // ─── KULLANICI SİLME ──────────────────────────────────────────────────────
+  deleteUser(id) {
+    const data = readDB();
+    const user = (data.users || []).find(u => u.id === parseInt(id));
+    if (!user) return null;
+    
+    // Kullanıcıyı sil
+    data.users = (data.users || []).filter(u => u.id !== parseInt(id));
+    
+    // İlişkili verileri temizle
+    // Sepeti temizle
+    if (data.carts) {
+      data.carts = data.carts.filter(c => c.userId !== parseInt(id));
+    }
+    
+    // Favorileri temizle
+    if (data.favorites) {
+      data.favorites = data.favorites.filter(f => f.userId !== parseInt(id));
+    }
+    
+    // Adresleri temizle
+    if (data.addresses) {
+      data.addresses = data.addresses.filter(a => a.userId !== parseInt(id));
+    }
+    
+    // Yorumları temizle
+    if (data.reviews) {
+      data.reviews = data.reviews.filter(r => r.userId !== parseInt(id));
+    }
+    
+    // NOT: Siparişler ve iade talepleri silinmez (istatistik için)
+    
+    writeDB(data);
+    return user;
   }
 };
 

@@ -1198,6 +1198,32 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
   res.json(users);
 });
 
+// Kullanıcı silme
+app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const user = db.getUserById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+    }
+    
+    // Kullanıcıyı sil
+    db.deleteUser(userId);
+    
+    // Log ekle
+    db.addLog({
+      action: 'user_delete',
+      detail: `Kullanıcı silindi: ${user.name} (${user.email})`,
+      adminUser: req.session.adminUser || 'admin',
+      ip: req.ip
+    });
+    
+    res.json({ success: true, message: 'Kullanıcı başarıyla silindi.' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Google ile giriş başlat
 app.get('/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })

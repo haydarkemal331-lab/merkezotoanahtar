@@ -2122,6 +2122,7 @@ function renderUsersTable(users) {
       '<td>'+
         '<button class="btn-sm btn-edit" onclick="openUserDetail('+u.id+')" title="Detay">&#x1F50D;</button>'+
         (userOrders.length>0?'<a href="#" onclick="showSection(\'orders\',null);filterByUser('+u.id+')" class="btn-sm" style="background:rgba(37,99,235,0.1);color:#60a5fa;border:1px solid rgba(37,99,235,0.2);margin-left:5px;" title="Siparisleri goster">'+userOrders.length+' Siparis</a>':'')+
+        '<button class="btn-sm btn-delete" onclick="deleteUser('+u.id+',\''+escapeSingleQuote(u.name||u.email)+'\')" title="Sil" style="margin-left:5px;">&#x1F5D1;</button>'+
       '</td>'+
     '</tr>';
   }).join('');
@@ -2203,6 +2204,37 @@ function filterByUser(userId) {
   const filtered = allOrders.filter(o => o.userId === userId);
   renderOrdersTable(filtered);
   document.getElementById('ordersCount').textContent = filtered.length;
+}
+
+// Kullanıcı silme fonksiyonu
+async function deleteUser(userId, userName) {
+  if (!confirm('⚠️ ' + userName + ' isimli kullanıcıyı silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz!')) {
+    return;
+  }
+  
+  try {
+    const res = await fetch('/api/admin/users/' + userId, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+      showToast('✅ Kullanıcı başarıyla silindi.', 'success');
+      // Kullanıcıyı listeden kaldır
+      allUsers = allUsers.filter(u => u.id !== userId);
+      filterUsers(); // Tabloyu güncelle
+      updateUserStats(); // İstatistikleri güncelle
+    } else {
+      showToast('❌ Hata: ' + (data.error || 'Kullanıcı silinemedi.'), 'error');
+    }
+  } catch (e) {
+    showToast('❌ Bağlantı hatası: ' + e.message, 'error');
+  }
+}
+
+// String içindeki tek tırnakları escape et (HTML attribute için)
+function escapeSingleQuote(str) {
+  return (str || '').replace(/'/g, "\\'");
 }
 
 function closeAdminOrderModal(){
