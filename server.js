@@ -1363,26 +1363,41 @@ app.post('/api/auth/login', (req, res) => {
 // OTP doğrulama
 app.post('/api/auth/verify-otp', (req, res) => {
   const { otp } = req.body;
+  console.log('[VERIFY-OTP] Dogrulama istegi geldi');
+  console.log('[VERIFY-OTP] Girilen kod:', otp);
+  
   if (!otp) return res.status(400).json({ error: 'Doğrulama kodu zorunludur.' });
   
   const pendingEmail = req.session.pendingEmail;
   const pendingUserId = req.session.pendingUserId;
   
+  console.log('[VERIFY-OTP] Session bilgileri:');
+  console.log('[VERIFY-OTP]   - pendingEmail:', pendingEmail);
+  console.log('[VERIFY-OTP]   - pendingUserId:', pendingUserId);
+  
   if (!pendingEmail || !pendingUserId) {
+    console.log('[VERIFY-OTP] HATA: Session bulunamadi!');
     return res.status(400).json({ error: 'Oturum bulunamadı. Lütfen tekrar giriş yapın.' });
   }
   
   // OTP doğrulama
+  console.log('[VERIFY-OTP] DB\'de OTP kontrol ediliyor...');
   const isValid = db.verifyOtp(pendingEmail, otp);
+  console.log('[VERIFY-OTP] OTP gecerli mi?', isValid);
+  
   if (!isValid) {
+    console.log('[VERIFY-OTP] HATA: Kod hatali veya suresi dolmus!');
     return res.status(401).json({ error: 'Doğrulama kodu hatalı veya süresi dolmuş.' });
   }
   
   // OTP doğru — kullanıcıyı session'a al
   const user = db.getUserById(pendingUserId);
   if (!user) {
+    console.log('[VERIFY-OTP] HATA: Kullanici bulunamadi!');
     return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
   }
+  
+  console.log('[VERIFY-OTP] BASARILI! Kullanici giris yapti:', user.email);
   
   req.session.userId = user.id;
   req.session.userName = user.name;
