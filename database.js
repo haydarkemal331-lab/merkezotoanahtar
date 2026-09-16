@@ -1282,6 +1282,45 @@ const db = {
     if (coupon.usedCount >= coupon.maxUses) coupon.active = false;
     writeDB(data);
     return coupon;
+  },
+
+  // ─── OTP (2FA) SİSTEMİ ────────────────────────────────────────────────────
+  saveOtp(email, otp) {
+    const data = readDB();
+    if (!data.otps) data.otps = [];
+    // Eski OTP varsa sil
+    data.otps = data.otps.filter(o => o.email !== email.toLowerCase().trim());
+    // Yeni OTP ekle (10 dakika geçerli)
+    const expires = Date.now() + 10 * 60 * 1000;
+    data.otps.push({
+      email: email.toLowerCase().trim(),
+      otp: otp.toString(),
+      expires,
+      createdAt: new Date().toISOString()
+    });
+    writeDB(data);
+  },
+
+  verifyOtp(email, otp) {
+    const data = readDB();
+    const record = (data.otps || []).find(o => o.email === email.toLowerCase().trim());
+    if (!record) return false;
+    if (Date.now() > record.expires) return false;
+    if (record.otp !== otp.toString()) return false;
+    return true;
+  },
+
+  clearOtp(email) {
+    const data = readDB();
+    data.otps = (data.otps || []).filter(o => o.email !== email.toLowerCase().trim());
+    writeDB(data);
+  },
+
+  clearExpiredOtps() {
+    const data = readDB();
+    const now = Date.now();
+    data.otps = (data.otps || []).filter(o => o.expires > now);
+    writeDB(data);
   }
 };
 

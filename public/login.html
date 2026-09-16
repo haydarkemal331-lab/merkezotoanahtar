@@ -111,7 +111,8 @@
     <div class="auth-body">
       <div class="error-msg" id="errorMsg"></div>
 
-      <form id="loginForm" onsubmit="doLogin(event)">
+      <!-- Adım 1: E-posta/Şifre -->
+      <form id="loginForm" onsubmit="handleLogin(event)" style="display:block;">
         <div class="input-group">
           <label>E-posta Adresi</label>
           <div class="input-wrap">
@@ -155,6 +156,35 @@
           Google ile Giriş Yap
         </a>
       </form>
+
+      <!-- Adım 2: OTP Doğrulama -->
+      <div id="otpStep" style="display:none;">
+        <div style="background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.2);border-radius:10px;padding:16px;margin-bottom:20px;text-align:center;">
+          <div style="font-size:32px;margin-bottom:8px;">📧</div>
+          <div style="font-size:14px;color:#60a5fa;font-weight:600;margin-bottom:4px;">Doğrulama Kodu Gönderildi</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.5;">E-posta adresinize 6 haneli kod gönderdik.<br/>Lütfen kontrol edin ve aşağıya girin.</div>
+        </div>
+
+        <div class="input-group">
+          <label>6 Haneli Doğrulama Kodu</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔐</span>
+            <input type="text" id="otpCode" placeholder="000000" maxlength="6" pattern="[0-9]{6}" required autocomplete="off" style="letter-spacing:4px;font-size:18px;font-weight:700;"/>
+          </div>
+        </div>
+
+        <div style="font-size:12px;color:var(--muted);margin-bottom:16px;text-align:center;">
+          ⏱️ Kod 10 dakika geçerlidir
+        </div>
+
+        <button type="button" class="auth-btn" id="verifyBtn" onclick="verifyOtp()">
+          <span>✅</span> Kodu Onayla
+        </button>
+
+        <button type="button" onclick="backToLogin()" style="width:100%;margin-top:12px;padding:10px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;font-size:13px;cursor:pointer;transition:var(--trans);" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+          ← Geri Dön
+        </button>
+      </div>
     </div>
 
     <div class="auth-footer">
@@ -177,13 +207,14 @@ function togglePw(id, btn) {
   else { inp.type = 'password'; btn.textContent = '👁'; }
 }
 
-async function doLogin(e) {
+// Adım 1: E-posta/Şifre ile giriş
+async function handleLogin(e) {
   e.preventDefault();
   const btn   = document.getElementById('loginBtn');
   const errEl = document.getElementById('errorMsg');
   errEl.style.display = 'none';
   btn.disabled = true;
-  btn.innerHTML = '<span>⏳</span> Giriş yapılıyor...';
+  btn.innerHTML = '<span>⏳</span> Kontrol ediliyor...';
 
   const res  = await fetch('/api/auth/login', {
     method: 'POST',
@@ -195,7 +226,15 @@ async function doLogin(e) {
   });
   const data = await res.json();
 
-  if (data.success) {
+  if (data.success && data.requireOtp) {
+    // OTP adımına geç
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('otpStep').style.display = 'block';
+    document.getElementById('otpCode').focus();
+    btn.disabled = false;
+    btn.innerHTML = '<span>🔑</span> Giriş Yap';
+  } else if (data.success) {
+    // Direkt giriş (eski kullanıcılar için fallback)
     const redir = new URLSearchParams(window.location.search).get('redirect') || '/';
     window.location.href = redir;
   } else {
@@ -205,6 +244,66 @@ async function doLogin(e) {
     btn.innerHTML = '<span>🔑</span> Giriş Yap';
   }
 }
+
+// Adım 2: OTP Doğrulama
+async function verifyOtp() {
+  const btn   = document.getElementById('verifyBtn');
+  const errEl = document.getElementById('errorMsg');
+  const otpCode = document.getElementById('otpCode').value.trim();
+  
+  if (otpCode.length !== 6 || !/^\d{6}$/.test(otpCode)) {
+    errEl.textContent = 'Lütfen 6 haneli kodu girin.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳</span> Doğrulanıyor...';
+
+  const res = await fetch('/api/auth/verify-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ otp: otpCode })
+  });
+  const data = await res.json();
+
+  if (data.success) {
+    btn.innerHTML = '<span>✅</span> Başarılı! Yönlendiriliyor...';
+    setTimeout(() => {
+      const redir = new URLSearchParams(window.location.search).get('redirect') || '/';
+      window.location.href = redir;
+    }, 500);
+  } else {
+    errEl.textContent = data.error || 'Doğrulama başarısız.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = '<span>✅</span> Kodu Onayla';
+    document.getElementById('otpCode').value = '';
+    document.getElementById('otpCode').focus();
+  }
+}
+
+// Geri dön
+function backToLogin() {
+  document.getElementById('otpStep').style.display = 'none';
+  document.getElementById('loginForm').style.display = 'block';
+  document.getElementById('otpCode').value = '';
+  document.getElementById('errorMsg').style.display = 'none';
+}
+
+// Enter tuşu ile OTP gönderme
+document.addEventListener('DOMContentLoaded', () => {
+  const otpInput = document.getElementById('otpCode');
+  if (otpInput) {
+    otpInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        verifyOtp();
+      }
+    });
+  }
+});
 </script>
 <script src="/lang.js"></script>
 <script src="/mobile-header.js"></script>

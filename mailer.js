@@ -344,6 +344,33 @@ async function sendWelcome(user) {
   });
 }
 
+// 8. OTP Doğrulama Kodu
+async function sendOtp(email, otp) {
+  const html = mailLayout(`
+    <div class="status-banner" style="background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.2);">
+      <span class="icon">🔐</span>
+      <h2 style="color:#60a5fa;">Giriş Doğrulama Kodu</h2>
+      <p>Hesabınıza giriş yapmak için aşağıdaki kodu kullanın.</p>
+    </div>
+    <div style="background:#1a1c24;border:2px solid rgba(37,99,235,0.3);border-radius:14px;padding:32px;text-align:center;margin:24px 0;">
+      <div style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;">Doğrulama Kodu</div>
+      <div style="font-size:48px;font-weight:800;color:#3b82f6;letter-spacing:8px;font-family:monospace;">${otp}</div>
+      <div style="font-size:13px;color:#666;margin-top:16px;">⏱️ Bu kod 10 dakika geçerlidir</div>
+    </div>
+    <p style="font-size:13px;color:#888;line-height:1.7;margin-top:24px;padding:16px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);border-radius:8px;">
+      ⚠️ <strong style="color:#f87171;">Güvenlik Uyarısı:</strong> Bu kodu kimseyle paylaşmayın. ${SITE_NAME} size asla bu kodu sormaz.
+    </p>
+    <div style="text-align:center;margin-top:20px;">
+      <a href="${WHATSAPP_URL}" class="btn btn-green">Destek Al</a>
+    </div>
+  `);
+  return sendMail({
+    to: email,
+    subject: `🔐 Giriş Doğrulama Kodu: ${otp} — ${SITE_NAME}`,
+    html
+  });
+}
+
 // ─── CONFIG GÜNCELLE ─────────────────────────────────────────────────────────
 function setMailConfig(user, pass) {
   MAIL_CONFIG.user = user;
@@ -362,6 +389,7 @@ module.exports = {
   sendOrderDelivered,
   sendOrderCancelled,
   sendWelcome,
+  sendOtp,
   setMailConfig,
   isMailConfigured
 };

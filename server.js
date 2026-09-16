@@ -832,8 +832,22 @@ app.delete('/api/admin/orders/bulk', requireAdmin, (req, res) => {
 });
 
 function requireUser(req, res, next) {
-  if (req.session?.userId) return next();
-  res.status(401).json({ error: 'Giriş yapmanız gerekiyor.', redirect: '/giris' });
+  if (!req.session?.userId) {
+    return res.status(401).json({ error: 'Giriş yapmanız gerekiyor.', redirect: '/giris' });
+  }
+  // 25 dakika session timeout kontrolü
+  const USER_SESSION_TIMEOUT = 25 * 60 * 1000; // 25 dakika
+  const lastActive = req.session.userLastActive || 0;
+  if (Date.now() - lastActive > USER_SESSION_TIMEOUT) {
+    req.session.userId = null;
+    req.session.userName = null;
+    req.session.userEmail = null;
+    req.session.userLastActive = null;
+    return res.status(401).json({ error: 'Oturumunuz zaman aşımına uğradı. Lütfen tekrar giriş yapın.', redirect: '/giris' });
+  }
+  // Her istekte son aktivite zamanını güncelle
+  req.session.userLastActive = Date.now();
+  next();
 }
 
 // Sepeti getir
@@ -1252,17 +1266,73 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// Giriş yap
+// Giriş yap (OTP gönder)
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
     return res.status(400).json({ error: 'E-posta ve şifre zorunludur.' });
+  
   const user = db.loginUser(email, password);
   if (!user) return res.status(401).json({ error: 'E-posta veya şifre hatalı.' });
-  req.session.userId    = user.id;
-  req.session.userName  = user.name;
+  
+  // Şifre doğru — 6 haneli OTP oluştur ve mail gönder
+  const otp = String(Math.floor(100000 + Math.random() * 900000)); // 6 haneli kod
+  db.saveOtp(email, otp);
+  
+  // OTP mail'i gönder
+  mailer.sendOtp(email, otp).catch(err => {
+    console.error('[OTP] Mail gönderme hatası:', err);
+  });
+  
+  // Kullanıcı bilgilerini session'a pending olarak kaydet
+  req.session.pendingUserId = user.id;
+  req.session.pendingEmail = email;
+  
+  res.json({ 
+    success: true, 
+    requireOtp: true,
+    message: 'Doğrulama kodu e-posta adresinize gönderildi. Lütfen kontrol edin.'
+  });
+});
+
+// OTP doğrulama
+app.post('/api/auth/verify-otp', (req, res) => {
+  const { otp } = req.body;
+  if (!otp) return res.status(400).json({ error: 'Doğrulama kodu zorunludur.' });
+  
+  const pendingEmail = req.session.pendingEmail;
+  const pendingUserId = req.session.pendingUserId;
+  
+  if (!pendingEmail || !pendingUserId) {
+    return res.status(400).json({ error: 'Oturum bulunamadı. Lütfen tekrar giriş yapın.' });
+  }
+  
+  // OTP doğrulama
+  const isValid = db.verifyOtp(pendingEmail, otp);
+  if (!isValid) {
+    return res.status(401).json({ error: 'Doğrulama kodu hatalı veya süresi dolmuş.' });
+  }
+  
+  // OTP doğru — kullanıcıyı session'a al
+  const user = db.getUserById(pendingUserId);
+  if (!user) {
+    return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+  }
+  
+  req.session.userId = user.id;
+  req.session.userName = user.name;
   req.session.userEmail = user.email;
-  res.json({ success: true, user });
+  req.session.userLastActive = Date.now(); // İlk aktivite zamanı
+  
+  // Pending bilgilerini temizle
+  req.session.pendingUserId = null;
+  req.session.pendingEmail = null;
+  
+  // OTP'yi temizle
+  db.clearOtp(pendingEmail);
+  
+  const { password: _, ...safeUser } = user;
+  res.json({ success: true, user: safeUser });
 });
 
 // Çıkış yap
@@ -1419,9 +1489,17 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Sunucu hatası.' });
 });
 
+// ─── OTP TEMİZLEME TIMER ─────────────────────────────────────────────────────
+// Her 15 dakikada bir süresi dolmuş OTP'leri temizle
+setInterval(() => {
+  db.clearExpiredOtps();
+  console.log('[OTP] Süresi dolmuş kodlar temizlendi.');
+}, 15 * 60 * 1000);
+
 app.listen(PORT, () => {
   console.log('\n🔑 Merkez Oto Anahtar sitesi çalışıyor!');
   console.log(`📦 Site:  http://localhost:${PORT}`);
   console.log(`🔧 Admin: http://localhost:${PORT}/admin`);
   console.log('👤 Kullanıcı: admin | Şifre: admin123\n');
+  console.log('🔐 2FA OTP sistemi aktif (10dk geçerlilik, 25dk session timeout)\n');
 });
