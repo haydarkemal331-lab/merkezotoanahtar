@@ -1229,19 +1229,37 @@ app.get('/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 
-// Google callback
+// Google callback - OTP ile
 app.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/giris?error=google' }),
-  (req, res) => {
-    // Passport kullanicisini session'a al
+  passport.authenticate('google', { failureRedirect: '/login?error=google' }),
+  async (req, res) => {
+    // Google'dan dönen kullanıcı bilgisi
     if (req.user) {
-      req.session.userId    = req.user.id;
-      req.session.userName  = req.user.name;
-      req.session.userEmail = req.user.email;
+      const email = req.user.email;
+      
+      // 6 haneli OTP oluştur ve mail gönder
+      const otp = String(Math.floor(100000 + Math.random() * 900000));
+      db.saveOtp(email, otp);
+      
+      console.log('[GOOGLE-OTP] Kod oluşturuldu:', otp, 'için:', email);
+      
+      // OTP mail'i gönder
+      mailer.sendOtp(email, otp).then(() => {
+        console.log('[GOOGLE-OTP] Mail gönderildi:', email);
+      }).catch(err => {
+        console.error('[GOOGLE-OTP] Mail gönderme hatası:', err);
+      });
+      
+      // Kullanıcı bilgilerini session'a pending olarak kaydet
+      req.session.pendingUserId = req.user.id;
+      req.session.pendingEmail = email;
+      req.session.pendingUserName = req.user.name;
+      
+      // OTP sayfasına yönlendir
+      res.redirect('/login?google=otp&email=' + encodeURIComponent(email));
+    } else {
+      res.redirect('/login?error=google');
     }
-    const redirect = req.session.authRedirect || '/';
-    delete req.session.authRedirect;
-    res.redirect(redirect);
   }
 );
 

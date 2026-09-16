@@ -196,10 +196,25 @@
 </div>
 
 <script>
-// URL'den email parametresi varsa otomatik doldur
+// URL'den parametreleri kontrol et
 const urlParams = new URLSearchParams(window.location.search);
 const emailParam = urlParams.get('email');
-if (emailParam) {
+const googleOtp = urlParams.get('google');
+
+// Google ile giriş sonrası OTP adımına direkt geç
+if (googleOtp === 'otp' && emailParam) {
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('otpStep').style.display = 'block';
+  document.getElementById('otpCode').focus();
+  // Bilgilendirme mesajını güncelle
+  const infoDiv = document.querySelector('#otpStep > div');
+  if (infoDiv) {
+    infoDiv.querySelector('div:nth-child(3)').innerHTML = 
+      'Google hesabınızla giriş yapıyorsunuz.<br/>E-posta adresinize 6 haneli kod gönderdik.';
+  }
+}
+// Normal kayıttan gelen email
+else if (emailParam) {
   document.getElementById('loginEmail').value = emailParam;
   // Şifre alanına focus yap
   setTimeout(() => {
