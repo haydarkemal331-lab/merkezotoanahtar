@@ -1320,7 +1320,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // Giriş yap (OTP gönder)
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   console.log('[LOGIN] Giriş denemesi:', req.body.email);
   const { email, password } = req.body;
   if (!email || !password)
@@ -1342,12 +1342,13 @@ app.post('/api/auth/login', (req, res) => {
   db.saveOtp(email, otp);
   
   // OTP mail'i gönder
-  mailer.sendOtp(email, otp).then(() => {
+  try {
+    await mailer.sendOtp(email, otp);
     console.log('[OTP] Mail basariyla gonderildi:', email);
-  }).catch(err => {
+  } catch (err) {
     console.error('[OTP] Mail gonderme hatasi:', err.message);
     console.error('[OTP] Mail olmadan devam edebilirsiniz - yukaridaki kodu kullanin');
-  });
+  }
   
   // Kullanıcı bilgilerini session'a pending olarak kaydet
   req.session.pendingUserId = user.id;
