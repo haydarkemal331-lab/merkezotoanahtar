@@ -1333,14 +1333,18 @@ app.post('/api/auth/login', (req, res) => {
   
   // Şifre doğru — 6 haneli OTP oluştur ve mail gönder
   const otp = String(Math.floor(100000 + Math.random() * 900000)); // 6 haneli kod
-  console.log('[OTP] Kod oluşturuldu:', otp, 'için:', email);
+  console.log('[OTP] ==========================================');
+  console.log('[OTP] 🔐 DOĞRULAMA KODU:', otp);
+  console.log('[OTP] 📧 Email:', email);
+  console.log('[OTP] ⏱️  Geçerlilik: 10 dakika');
+  console.log('[OTP] ==========================================');
   db.saveOtp(email, otp);
   
   // OTP mail'i gönder
   mailer.sendOtp(email, otp).then(() => {
-    console.log('[OTP] Mail gönderildi:', email);
+    console.log('[OTP] ✅ Mail başarıyla gönderildi:', email);
   }).catch(err => {
-    console.error('[OTP] Mail gönderme hatası:', err);
+    console.error('[OTP] ❌ Mail gönderme hatası:', err.message);
   });
   
   // Kullanıcı bilgilerini session'a pending olarak kaydet
