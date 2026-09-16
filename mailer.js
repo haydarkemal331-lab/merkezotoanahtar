@@ -4,7 +4,7 @@ const nodemailer = require('nodemailer');
 // Gmail uygulama şifrenizi aldıktan sonra buraya girin
 const MAIL_CONFIG = {
   user: process.env.MAIL_USER || 'merkezotoanahtar07@gmail.com',
-  pass: process.env.MAIL_PASS || 'xtircgrnfupfxljo'
+  pass: process.env.MAIL_PASS || 'voofqhwgeijhdvjo'
 };
 
 const SITE_NAME    = 'Merkez Oto Anahtar';
