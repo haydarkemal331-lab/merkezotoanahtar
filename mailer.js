@@ -15,8 +15,11 @@ const WHATSAPP_URL = 'https://wa.me/905386470132';
 function createTransporter() {
   if (!MAIL_CONFIG.pass) return null;
   return nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: MAIL_CONFIG.user, pass: MAIL_CONFIG.pass }
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: { user: MAIL_CONFIG.user, pass: MAIL_CONFIG.pass },
+    tls: { rejectUnauthorized: false }
   });
 }
 
