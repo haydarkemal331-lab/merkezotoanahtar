@@ -1,5 +1,4 @@
-const riş yaptıktan sonrasayfa bu şekilde oluyor
-express = require('express');
+const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
