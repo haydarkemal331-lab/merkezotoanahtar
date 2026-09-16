@@ -10,6 +10,8 @@ const { generateInvoice, saveInvoiceToDisk } = require('./invoice');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const db = require('./database');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 // ─── GOOGLE OAUTH CONFIG ──────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID     = process.env.GOOGLE_CLIENT_ID     || '91883857457-ujmkdv98c33savgprkmn2ukkc30jk31k.apps.googleusercontent.com';
@@ -59,36 +61,180 @@ if (!fs.existsSync(PERM_UPLOAD_DIR)) fs.mkdirSync(PERM_UPLOAD_DIR, { recursive: 
 if (!fs.existsSync(PUB_UPLOAD_DIR))  fs.mkdirSync(PUB_UPLOAD_DIR,  { recursive: true });
 const uploadDir = PERM_UPLOAD_DIR;
 
+// ─── GÜVENLI DOSYA ADI ───────────────────────────────────────────────────────
+// Path traversal koruması: orijinal dosya adından sadece uzantıyı alır,
+// geri kalanı tamamen rastgele UUID ile değiştirilir
+const ALLOWED_EXTENSIONS = /\.(jpeg|jpg|png|gif|webp)$/i;
+const ALLOWED_MIMETYPES  = /^image\/(jpeg|png|gif|webp)$/i;
+
+function safeFilename(originalname) {
+  const ext = path.extname(originalname).toLowerCase();
+  // Sadece izin verilen uzantı, başka hiçbir şey
+  if (!ALLOWED_EXTENSIONS.test(ext)) throw new Error('Geçersiz dosya uzantısı.');
+  const rand = Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+  return rand + ext; // Orijinal isimden hiçbir şey kalmaz
+}
+
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
+  destination: (req, file, cb) => {
+    // uploadDir dışına çıkma girişimini engelle
+    const resolved = path.resolve(uploadDir);
+    cb(null, resolved);
+  },
   filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
+    try {
+      cb(null, safeFilename(file.originalname));
+    } catch (e) {
+      cb(e);
+    }
   }
 });
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
-    const ok = /jpeg|jpg|png|gif|webp/;
-    if (ok.test(path.extname(file.originalname).toLowerCase()) && ok.test(file.mimetype)) cb(null, true);
-    else cb(new Error('Sadece görsel yükleyebilirsiniz!'));
+    // Hem uzantı hem MIME type kontrolü
+    const extOk  = ALLOWED_EXTENSIONS.test(path.extname(file.originalname).toLowerCase());
+    const mimeOk = ALLOWED_MIMETYPES.test(file.mimetype);
+    if (extOk && mimeOk) {
+      cb(null, true);
+    } else {
+      cb(new Error('Sadece JPEG, PNG, GIF veya WebP görseli yükleyebilirsiniz.'));
+    }
   },
-  limits: { fileSize: 5 * 1024 * 1024 }
+  limits: {
+    fileSize:  5 * 1024 * 1024, // 5 MB
+    files:     10,               // Max 10 dosya
+    fieldSize: 2 * 1024 * 1024  // Field değeri 2 MB
+  }
 });
+
+// ─── GÜVENLİK MİDDLEWARE'LERİ ───────────────────────────────────────────────
+
+// 1. Helmet — HTTP güvenlik header'ları
+app.use(helmet({
+  contentSecurityPolicy: false, // Inline script/style kullandığımız için kapalı
+  crossOriginEmbedderPolicy: false
+}));
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
+
+// 2. Genel API rate limit — IP başına 200 istek/dk
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Çok fazla istek gönderdiniz. Lütfen bekleyin.' },
+  skip: (req) => req.path.startsWith('/uploads') || req.path.startsWith('/admin')
+});
+app.use('/api/', apiLimiter);
+
+// 3. Admin login brute force koruması — IP başına 5 deneme / 15dk
+const loginAttempts = new Map(); // IP → { count, lockUntil }
+const adminLoginLimiter = (req, res, next) => {
+  const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+  const now = Date.now();
+  const entry = loginAttempts.get(ip) || { count: 0, lockUntil: 0 };
+
+  if (entry.lockUntil > now) {
+    const remaining = Math.ceil((entry.lockUntil - now) / 60000);
+    return res.status(429).json({
+      error: `Çok fazla hatalı giriş denemesi. ${remaining} dakika sonra tekrar deneyin.`
+    });
+  }
+  req._loginIp = ip;
+  next();
+};
+
+const recordLoginFail = (ip) => {
+  const now = Date.now();
+  const entry = loginAttempts.get(ip) || { count: 0, lockUntil: 0 };
+  entry.count++;
+  if (entry.count >= 5) {
+    entry.lockUntil = now + 15 * 60 * 1000; // 15 dakika kilit
+    entry.count = 0;
+    console.warn(`[GÜVENLİK] ${ip} adresi 15 dakika kilitlendi (5 hatalı deneme)`);
+  }
+  loginAttempts.set(ip, entry);
+};
+
+const clearLoginFail = (ip) => {
+  loginAttempts.delete(ip);
+};
+
+// Kilit kayıtlarını temizle (her 30 dakika)
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of loginAttempts.entries()) {
+    if (entry.lockUntil < now && entry.count === 0) loginAttempts.delete(ip);
+  }
+}, 30 * 60 * 1000);
+
+// 4. XSS temizleme yardımcısı
+function sanitize(str) {
+  if (typeof str !== 'string') return str;
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+}
+
+// 5. Input sanitize middleware — body'deki string alanları temizle
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object') {
+    const sanitizeObj = (obj) => {
+      for (const key of Object.keys(obj)) {
+        if (typeof obj[key] === 'string') {
+          // Script tag'leri kaldır, diğer string'lere dokunma (formatPrice vb. bozulmasın)
+          obj[key] = obj[key].replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+                              .replace(/javascript:/gi, '')
+                              .replace(/on\w+\s*=/gi, '');
+        } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+          sanitizeObj(obj[key]);
+        }
+      }
+    };
+    sanitizeObj(req.body);
+  }
+  next();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
-// Kalıcı storage'daki resimleri /uploads path'inde sun
-app.use('/uploads', express.static(PERM_UPLOAD_DIR));
+// Kalıcı storage'daki resimleri /uploads path'inde sun — path traversal korumasıyla
+app.use('/uploads', (req, res, next) => {
+  // URL'de ../ veya null byte varsa reddet
+  const decodedUrl = decodeURIComponent(req.url);
+  if (decodedUrl.includes('..') || decodedUrl.includes('\0') || /[<>:"|?*]/.test(decodedUrl)) {
+    return res.status(400).json({ error: 'Geçersiz dosya yolu.' });
+  }
+  // Sadece izin verilen uzantılara erişim
+  const ext = path.extname(req.url).toLowerCase();
+  if (!ALLOWED_EXTENSIONS.test(ext) && ext !== '') {
+    return res.status(403).json({ error: 'Erişim reddedildi.' });
+  }
+  next();
+}, express.static(PERM_UPLOAD_DIR, { dotfiles: 'deny' }));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'merkez-oto-anahtar-secret-2024',
   resave: true,
   saveUninitialized: false,
   rolling: true,
   cookie: { 
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 gün
-    secure: false,
+    maxAge: 30 * 60 * 1000, // 30 dakika inaktif → oturum kapanır
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     httpOnly: true
   }
@@ -97,8 +243,16 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 function requireAdmin(req, res, next) {
-  if (req.session?.adminId) return next();
-  res.status(401).json({ error: 'Yetkisiz erişim.' });
+  if (!req.session?.adminId) return res.status(401).json({ error: 'Yetkisiz erişim.' });
+  // Session timeout kontrolü — 30 dakika inaktif ise çıkış yap
+  const TIMEOUT = 30 * 60 * 1000;
+  const lastActive = req.session.adminLastActive || 0;
+  if (Date.now() - lastActive > TIMEOUT) {
+    req.session.destroy();
+    return res.status(401).json({ error: 'Oturumunuz zaman aşımına uğradı. Lütfen tekrar giriş yapın.' });
+  }
+  req.session.adminLastActive = Date.now(); // Her istekte güncelle
+  next();
 }
 
 // Log yardımcısı — endpoint handler içinden çağrılır
@@ -153,14 +307,25 @@ app.get('/api/sub-categories', (req, res) => {
 
 // ─── ADMIN AUTH ───────────────────────────────────────────────────────────────
 
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', adminLoginLimiter, (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Kullanıcı adı ve şifre gerekli.' });
   const admin = db.getAdminByUsername(username);
-  if (!admin || !bcrypt.compareSync(password, admin.password))
-    return res.status(401).json({ error: 'Kullanıcı adı veya şifre hatalı.' });
+  if (!admin || !bcrypt.compareSync(password, admin.password)) {
+    recordLoginFail(req._loginIp || req.ip);
+    // Kaç deneme kaldığını da söyle
+    const ip    = req._loginIp || req.ip;
+    const entry = loginAttempts.get(ip) || { count: 0 };
+    const left  = Math.max(0, 5 - entry.count);
+    adminLog(req, 'Başarısız Giriş', `Kullanıcı: ${username} | Kalan: ${left} deneme`);
+    return res.status(401).json({
+      error: `Kullanıcı adı veya şifre hatalı.${left < 5 ? ` (${left} deneme hakkı kaldı)` : ''}`
+    });
+  }
+  clearLoginFail(req._loginIp || req.ip);
   req.session.adminId = admin.id;
   req.session.adminUsername = admin.username;
+  req.session.adminLastActive = Date.now();
   adminLog(req, 'Admin Giriş', `Kullanıcı: ${username}`);
   res.json({ success: true });
 });
@@ -1234,6 +1399,25 @@ app.get('/sitemap.xml', (req, res) => {
 </urlset>`);
 });
 app.use((req, res) => res.status(404).sendFile(path.join(__dirname, 'public', 'index.html')));
+
+// ─── GLOBAL HATA HANDLER ─────────────────────────────────────────────────────
+// Multer ve diğer middleware hatalarını yakala
+app.use((err, req, res, next) => {
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ error: 'Dosya boyutu 5 MB\'ı aşamaz.' });
+  }
+  if (err.code === 'LIMIT_FILE_COUNT') {
+    return res.status(400).json({ error: 'En fazla 10 dosya yükleyebilirsiniz.' });
+  }
+  if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({ error: 'Beklenmeyen dosya alanı.' });
+  }
+  if (err.message && err.message.includes('görsel')) {
+    return res.status(400).json({ error: err.message });
+  }
+  console.error('[HATA]', err.message);
+  res.status(500).json({ error: 'Sunucu hatası.' });
+});
 
 app.listen(PORT, () => {
   console.log('\n🔑 Merkez Oto Anahtar sitesi çalışıyor!');

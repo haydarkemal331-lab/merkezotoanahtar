@@ -861,6 +861,47 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- OTURUM UYARI MODAL -->
+<div id="sessionWarningModal" style="
+  display:none; position:fixed; inset:0; z-index:9999;
+  background:rgba(0,0,0,0.75); backdrop-filter:blur(8px);
+  align-items:center; justify-content:center;">
+  <div style="
+    background:linear-gradient(145deg,#10121c,#141620);
+    border:1px solid rgba(230,57,70,0.4);
+    border-radius:20px; padding:36px 40px;
+    max-width:420px; width:90%; text-align:center;
+    box-shadow:0 24px 80px rgba(0,0,0,0.8), 0 0 0 1px rgba(230,57,70,0.15);
+    animation:fadeUp .3s ease;">
+    <div style="font-size:52px; margin-bottom:16px; animation:pulse 1.5s ease infinite;">⏱️</div>
+    <h3 style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:800;color:#fff;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;">
+      Oturum Süresi Dolmak Üzere
+    </h3>
+    <p style="color:#6b7280;font-size:14px;line-height:1.6;margin-bottom:8px;">
+      Güvenlik nedeniyle oturumunuz <span id="sessionCountdown" style="color:#e63946;font-weight:700;font-size:16px;">5:00</span> içinde kapanacak.
+    </p>
+    <p style="color:#6b7280;font-size:13px;margin-bottom:28px;">Devam etmek istiyor musunuz?</p>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button onclick="extendSession()" style="
+        flex:1; padding:13px 20px;
+        background:linear-gradient(135deg,#e63946,#b5202c);
+        color:#fff; border:none; border-radius:11px;
+        font-size:14px; font-weight:700; font-family:inherit; cursor:pointer;
+        box-shadow:0 4px 16px rgba(230,57,70,0.4);">
+        ✅ Oturumu Uzat
+      </button>
+      <button onclick="doLogout()" style="
+        flex:1; padding:13px 20px;
+        background:rgba(255,255,255,0.05);
+        color:#6b7280; border:1px solid rgba(255,255,255,0.1);
+        border-radius:11px; font-size:14px; font-weight:600;
+        font-family:inherit; cursor:pointer;">
+        🚪 Çıkış Yap
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─── SIDEBAR COLLAPSE ─────────────────────────────────────────────────────────
 (function() {
@@ -2362,6 +2403,85 @@ async function manualRefresh() {
   if(btn){btn.innerHTML='&#x1F504; Yenile';btn.disabled=false;}
   showToast('Veriler guncellendi!','success');
 }
+
+// ─── OTURUM SÜRESİ UYARISI ───────────────────────────────────────────────────
+(function initSessionWatcher() {
+  const SESSION_TIMEOUT  = 30 * 60 * 1000; // 30 dakika (server ile eşit)
+  const WARN_BEFORE      = 5  * 60 * 1000; // 5 dakika kala uyar
+  const WARN_AT          = SESSION_TIMEOUT - WARN_BEFORE; // 25. dakikada uyar
+
+  let lastActivity  = Date.now();
+  let warnTimer     = null;
+  let logoutTimer   = null;
+  let countdownInt  = null;
+  let warned        = false;
+
+  // Kullanıcı hareketi = aktivite sıfırla
+  ['click','keydown','mousemove','scroll','touchstart'].forEach(evt => {
+    document.addEventListener(evt, resetActivity, { passive: true });
+  });
+
+  function resetActivity() {
+    if (warned) return; // Uyarı ekrandayken harekete tepki verme
+    lastActivity = Date.now();
+    scheduleTimers();
+  }
+
+  function scheduleTimers() {
+    clearTimeout(warnTimer);
+    clearTimeout(logoutTimer);
+    warnTimer   = setTimeout(showWarning, WARN_AT);
+    logoutTimer = setTimeout(forceLogout, SESSION_TIMEOUT);
+  }
+
+  function showWarning() {
+    warned = true;
+    const modal = document.getElementById('sessionWarningModal');
+    if (modal) modal.style.display = 'flex';
+    startCountdown(WARN_BEFORE / 1000);
+  }
+
+  function startCountdown(seconds) {
+    clearInterval(countdownInt);
+    let remaining = seconds;
+    const el = document.getElementById('sessionCountdown');
+    const update = () => {
+      if (!el) return;
+      const m = Math.floor(remaining / 60);
+      const s = Math.floor(remaining % 60);
+      el.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+      if (remaining <= 0) { clearInterval(countdownInt); forceLogout(); }
+      remaining--;
+    };
+    update();
+    countdownInt = setInterval(update, 1000);
+  }
+
+  function forceLogout() {
+    clearInterval(countdownInt);
+    clearTimeout(warnTimer);
+    clearTimeout(logoutTimer);
+    doLogout();
+  }
+
+  // Oturumu uzat
+  window.extendSession = async function() {
+    try {
+      await fetch('/api/admin/check'); // Sunucuya istek → session yenilenir
+    } catch(e) {}
+    warned = false;
+    lastActivity = Date.now();
+    clearInterval(countdownInt);
+    const modal = document.getElementById('sessionWarningModal');
+    if (modal) modal.style.display = 'none';
+    scheduleTimers();
+    showToast('Oturum süresi uzatıldı. ✅', 'success');
+  };
+
+  // Başlat
+  scheduleTimers();
+})();
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function doLogout(){await fetch('/api/admin/logout',{method:'POST'});window.location.href='/admin';}
 function showToast(msg,type){
