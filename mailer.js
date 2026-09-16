@@ -1,41 +1,42 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 // ─── AYARLAR ─────────────────────────────────────────────────────────────────
-// Gmail uygulama şifrenizi aldıktan sonra buraya girin
-const MAIL_CONFIG = {
-  user: process.env.MAIL_USER || 'merkezotoanahtar07@gmail.com',
-  pass: process.env.MAIL_PASS || 'voofqhwgeijhdvjo'
-};
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const MAIL_FROM = 'Merkez Oto Anahtar <onboarding@resend.dev>'; // Resend test domain
 
 const SITE_NAME    = 'Merkez Oto Anahtar';
 const SITE_URL     = 'http://localhost:3000';
 const WHATSAPP_URL = 'https://wa.me/905386470132';
 
-// ─── TRANSPORTER ─────────────────────────────────────────────────────────────
-function createTransporter() {
-  if (!MAIL_CONFIG.pass) return null;
-  return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: { user: MAIL_CONFIG.user, pass: MAIL_CONFIG.pass },
-    tls: { rejectUnauthorized: false }
-  });
+// ─── RESEND CLIENT ───────────────────────────────────────────────────────────
+let resendClient = null;
+function getResendClient() {
+  if (!RESEND_API_KEY) return null;
+  if (!resendClient) {
+    resendClient = new Resend(RESEND_API_KEY);
+  }
+  return resendClient;
 }
 
 // ─── TEMEL MAIL GÖNDER ───────────────────────────────────────────────────────
 async function sendMail({ to, subject, html }) {
-  const transporter = createTransporter();
-  if (!transporter) {
-    console.log('[MAIL] Şifre girilmemiş, mail gönderilmedi:', subject, '->', to);
+  const resend = getResendClient();
+  if (!resend) {
+    console.log('[MAIL] Resend API key girilmemiş, mail gönderilmedi:', subject, '->', to);
     return false;
   }
   try {
-    await transporter.sendMail({
-      from: `"${SITE_NAME}" <${MAIL_CONFIG.user}>`,
-      to, subject, html
+    const { data, error } = await resend.emails.send({
+      from: MAIL_FROM,
+      to: [to],
+      subject,
+      html
     });
-    console.log('[MAIL] Gönderildi:', subject, '->', to);
+    if (error) {
+      console.error('[MAIL] Resend Hata:', error);
+      return false;
+    }
+    console.log('[MAIL] Gönderildi:', subject, '->', to, '| ID:', data.id);
     return true;
   } catch (e) {
     console.error('[MAIL] Hata:', e.message);
@@ -265,31 +266,31 @@ async function sendOrderDelivered(order, user, invoicePdfBuffer) {
     </div>
   `);
 
-  const transporter = createTransporter();
-  if (!transporter) {
-    console.log('[MAIL] Şifre girilmemiş, mail gönderilmedi.');
+  const resend = getResendClient();
+  if (!resend) {
+    console.log('[MAIL] Resend API key girilmemiş, mail gönderilmedi.');
     return false;
   }
 
-  const mailOptions = {
-    from: `"${SITE_NAME}" <${MAIL_CONFIG.user}>`,
-    to: user.email,
-    subject: `🎉 Teslim Edildi + Fatura — ${order.orderNo}`,
-    html
-  };
-
-  // PDF fatura ekle
-  if (invoicePdfBuffer) {
-    mailOptions.attachments = [{
-      filename: `fatura-${order.orderNo}.pdf`,
-      content: invoicePdfBuffer,
-      contentType: 'application/pdf'
-    }];
-  }
-
   try {
-    await transporter.sendMail(mailOptions);
-    console.log('[MAIL] Teslim + fatura gönderildi:', user.email);
+    const attachments = invoicePdfBuffer ? [{
+      filename: `fatura-${order.orderNo}.pdf`,
+      content: invoicePdfBuffer
+    }] : [];
+
+    const { data, error } = await resend.emails.send({
+      from: MAIL_FROM,
+      to: [user.email],
+      subject: `🎉 Teslim Edildi + Fatura — ${order.orderNo}`,
+      html,
+      attachments
+    });
+
+    if (error) {
+      console.error('[MAIL] Resend Hata:', error);
+      return false;
+    }
+    console.log('[MAIL] Teslim + fatura gönderildi:', user.email, '| ID:', data.id);
     return true;
   } catch (e) {
     console.error('[MAIL] Hata:', e.message);
@@ -375,13 +376,13 @@ async function sendOtp(email, otp) {
 }
 
 // ─── CONFIG GÜNCELLE ─────────────────────────────────────────────────────────
-function setMailConfig(user, pass) {
-  MAIL_CONFIG.user = user;
-  MAIL_CONFIG.pass = pass;
+function setMailConfig(apiKey) {
+  process.env.RESEND_API_KEY = apiKey;
+  resendClient = null; // Reset client
 }
 
 function isMailConfigured() {
-  return !!(MAIL_CONFIG.pass && MAIL_CONFIG.user);
+  return !!RESEND_API_KEY;
 }
 
 module.exports = {
