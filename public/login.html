@@ -243,33 +243,52 @@ async function handleLogin(e) {
   btn.disabled = true;
   btn.innerHTML = '<span>⏳</span> Kontrol ediliyor...';
 
-  const res  = await fetch('/api/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email:    document.getElementById('loginEmail').value.trim(),
-      password: document.getElementById('loginPassword').value
-    })
-  });
-  const data = await res.json();
-  console.log('[LOGIN] Sunucu yanıtı:', data);
+  try {
+    const res  = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email:    document.getElementById('loginEmail').value.trim(),
+        password: document.getElementById('loginPassword').value
+      })
+    });
+    
+    if (!res.ok) {
+      console.error('[LOGIN] HTTP Hata:', res.status, res.statusText);
+      throw new Error('Sunucu hatası: ' + res.status);
+    }
+    
+    const data = await res.json();
+    console.log('[LOGIN] Sunucu yanıtı:', data);
 
-  if (data.success && data.requireOtp) {
-    console.log('[OTP] OTP adımına geçiliyor...');
-    // OTP adımına geç
-    document.getElementById('loginForm').style.display = 'none';
-    document.getElementById('otpStep').style.display = 'block';
-    document.getElementById('otpCode').focus();
-    btn.disabled = false;
-    btn.innerHTML = '<span>🔑</span> Giriş Yap';
-  } else if (data.success) {
-    console.log('[LOGIN] Direkt giriş yapıldı');
-    // Direkt giriş (eski kullanıcılar için fallback)
-    const redir = new URLSearchParams(window.location.search).get('redirect') || '/';
-    window.location.href = redir;
-  } else {
-    console.error('[LOGIN] Hata:', data.error);
-    errEl.textContent = data.error || 'Giriş başarısız.';
+    if (data.success && data.requireOtp) {
+      console.log('[OTP] OTP adımına geçiliyor...');
+      // OTP adımına geç
+      document.getElementById('loginForm').style.display = 'none';
+      document.getElementById('otpStep').style.display = 'block';
+      const otpInput = document.getElementById('otpCode');
+      if (otpInput) {
+        otpInput.focus();
+      } else {
+        console.error('[OTP] otpCode input bulunamadı!');
+      }
+      btn.disabled = false;
+      btn.innerHTML = '<span>🔑</span> Giriş Yap';
+    } else if (data.success) {
+      console.log('[LOGIN] Direkt giriş yapıldı (OTP yok)');
+      // Direkt giriş (fallback)
+      const redir = new URLSearchParams(window.location.search).get('redirect') || '/';
+      window.location.href = redir;
+    } else {
+      console.error('[LOGIN] Hata:', data.error);
+      errEl.textContent = data.error || 'Giriş başarısız.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.innerHTML = '<span>🔑</span> Giriş Yap';
+    }
+  } catch (error) {
+    console.error('[LOGIN] Fetch hatası:', error);
+    errEl.textContent = 'Bağlantı hatası: ' + error.message;
     errEl.style.display = 'block';
     btn.disabled = false;
     btn.innerHTML = '<span>🔑</span> Giriş Yap';
