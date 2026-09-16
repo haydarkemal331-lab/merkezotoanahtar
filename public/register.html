@@ -322,12 +322,13 @@ async function doRegister(e) {
   const data = await res.json();
 
   if (data.success) {
-    succEl.textContent = '✅ Kayıt başarılı! Yönlendiriliyorsunuz...';
+    // Kayıt başarılı - login sayfasına yönlendir
+    succEl.textContent = '✅ Kayıt başarılı! Giriş sayfasına yönlendiriliyorsunuz...';
     succEl.style.display = 'block';
     setTimeout(() => {
-      const redir = new URLSearchParams(window.location.search).get('redirect') || '/';
-      window.location.href = redir;
-    }, 1200);
+      // Login sayfasına git, kayıtlı email'i otomatik doldur
+      window.location.href = '/login?email=' + encodeURIComponent(email);
+    }, 1500);
   } else {
     errEl.textContent = data.error || 'Kayıt olunamadı.';
     errEl.style.display = 'block';

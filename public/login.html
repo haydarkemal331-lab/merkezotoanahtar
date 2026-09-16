@@ -196,6 +196,17 @@
 </div>
 
 <script>
+// URL'den email parametresi varsa otomatik doldur
+const urlParams = new URLSearchParams(window.location.search);
+const emailParam = urlParams.get('email');
+if (emailParam) {
+  document.getElementById('loginEmail').value = emailParam;
+  // Şifre alanına focus yap
+  setTimeout(() => {
+    document.getElementById('loginPassword').focus();
+  }, 100);
+}
+
 // Zaten giris yapilmissa yonlendir
 fetch('/api/auth/me').then(r=>r.json()).then(d=>{
   if(d.loggedIn) window.location.href = new URLSearchParams(window.location.search).get('redirect') || '/hesabim';

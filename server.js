@@ -1233,9 +1233,11 @@ app.post('/api/auth/register', async (req, res) => {
     return res.status(400).json({ error: 'Geçerli bir e-posta girin.' });
   try {
     const user = db.registerUser({ name, email, password, phone });
-    req.session.userId    = user.id;
-    req.session.userName  = user.name;
-    req.session.userEmail = user.email;
+    
+    // Session açmıyoruz - kullanıcı login sayfasından OTP ile giriş yapacak
+    // req.session.userId    = user.id;
+    // req.session.userName  = user.name;
+    // req.session.userEmail = user.email;
 
     // Hoşgeldin maili (arka planda)
     mailer.sendWelcome(user).catch(e =>
@@ -1260,7 +1262,13 @@ app.post('/api/auth/register', async (req, res) => {
       </div>`
     }).catch(e => console.error('[MAIL] Üye bildirimi gönderilemedi:', e.message));
 
-    res.json({ success: true, user });
+    // Kayıt başarılı, login sayfasına yönlendir
+    res.json({ 
+      success: true, 
+      user, 
+      redirectToLogin: true,
+      message: 'Kayıt başarılı! Şimdi giriş yapabilirsiniz.' 
+    });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
