@@ -1268,19 +1268,26 @@ app.post('/api/auth/register', async (req, res) => {
 
 // Giriş yap (OTP gönder)
 app.post('/api/auth/login', (req, res) => {
+  console.log('[LOGIN] Giriş denemesi:', req.body.email);
   const { email, password } = req.body;
   if (!email || !password)
     return res.status(400).json({ error: 'E-posta ve şifre zorunludur.' });
   
   const user = db.loginUser(email, password);
-  if (!user) return res.status(401).json({ error: 'E-posta veya şifre hatalı.' });
+  if (!user) {
+    console.log('[LOGIN] Hatalı şifre:', email);
+    return res.status(401).json({ error: 'E-posta veya şifre hatalı.' });
+  }
   
   // Şifre doğru — 6 haneli OTP oluştur ve mail gönder
   const otp = String(Math.floor(100000 + Math.random() * 900000)); // 6 haneli kod
+  console.log('[OTP] Kod oluşturuldu:', otp, 'için:', email);
   db.saveOtp(email, otp);
   
   // OTP mail'i gönder
-  mailer.sendOtp(email, otp).catch(err => {
+  mailer.sendOtp(email, otp).then(() => {
+    console.log('[OTP] Mail gönderildi:', email);
+  }).catch(err => {
     console.error('[OTP] Mail gönderme hatası:', err);
   });
   
@@ -1288,6 +1295,7 @@ app.post('/api/auth/login', (req, res) => {
   req.session.pendingUserId = user.id;
   req.session.pendingEmail = email;
   
+  console.log('[OTP] Session güncellendi, requireOtp: true dönüyor');
   res.json({ 
     success: true, 
     requireOtp: true,

@@ -210,6 +210,7 @@ function togglePw(id, btn) {
 // Adım 1: E-posta/Şifre ile giriş
 async function handleLogin(e) {
   e.preventDefault();
+  console.log('[LOGIN] Form gönderiliyor...');
   const btn   = document.getElementById('loginBtn');
   const errEl = document.getElementById('errorMsg');
   errEl.style.display = 'none';
@@ -225,8 +226,10 @@ async function handleLogin(e) {
     })
   });
   const data = await res.json();
+  console.log('[LOGIN] Sunucu yanıtı:', data);
 
   if (data.success && data.requireOtp) {
+    console.log('[OTP] OTP adımına geçiliyor...');
     // OTP adımına geç
     document.getElementById('loginForm').style.display = 'none';
     document.getElementById('otpStep').style.display = 'block';
@@ -234,10 +237,12 @@ async function handleLogin(e) {
     btn.disabled = false;
     btn.innerHTML = '<span>🔑</span> Giriş Yap';
   } else if (data.success) {
+    console.log('[LOGIN] Direkt giriş yapıldı');
     // Direkt giriş (eski kullanıcılar için fallback)
     const redir = new URLSearchParams(window.location.search).get('redirect') || '/';
     window.location.href = redir;
   } else {
+    console.error('[LOGIN] Hata:', data.error);
     errEl.textContent = data.error || 'Giriş başarısız.';
     errEl.style.display = 'block';
     btn.disabled = false;
