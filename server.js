@@ -1,4 +1,5 @@
-const express = require('express');
+const riş yaptıktan sonrasayfa bu şekilde oluyor
+express = require('express');
 const session = require('express-session');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
@@ -1197,7 +1198,7 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
   });
   res.json(users);
 });
-
+ 
 // Kullanıcı silme
 app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
   try {
@@ -1466,9 +1467,10 @@ app.get('/sitemap.xml', async (req, res) => {
   }
 });
 app.get('/urun/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'product.html')));
-app.get('/kategori/:slug', (req, res) => res.sendFile(path.join(__dirname, 'public', 'category.html')));
 app.get('/paylasim/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'post.html')));
 app.get('/kayit', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
+app.get('/giris', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html'))); // Alternatif route));
 app.get('/giris', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/hesabim', (req, res) => res.sendFile(path.join(__dirname, 'public', 'account.html')));
 app.get('/sepet', (req, res) => res.sendFile(path.join(__dirname, 'public', 'cart.html')));
