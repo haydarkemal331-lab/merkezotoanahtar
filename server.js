@@ -1244,11 +1244,12 @@ app.get('/auth/google/callback',
       console.log('[GOOGLE-OTP] Kod oluşturuldu:', otp, 'için:', email);
       
       // OTP mail'i gönder
-      mailer.sendOtp(email, otp).then(() => {
-        console.log('[GOOGLE-OTP] Mail gönderildi:', email);
-      }).catch(err => {
-        console.error('[GOOGLE-OTP] Mail gönderme hatası:', err);
-      });
+      try {
+        await mailer.sendOtp(email, otp);
+        console.log('[OTP] Mail basariyla gonderildi:', email);
+      } catch (err) {
+        console.error('[OTP] Mail gonderme hatasi:', err.message);
+      }
       
       // Kullanıcı bilgilerini session'a pending olarak kaydet
       req.session.pendingUserId = req.user.id;
