@@ -3,6 +3,8 @@ const { Resend } = require('resend');
 // ─── AYARLAR ─────────────────────────────────────────────────────────────────
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const MAIL_FROM = 'Merkez Oto Anahtar <onboarding@resend.dev>'; // Resend test domain
+const TEST_MODE = true; // TEST: tüm mailleri merkezotoanahtar07@gmail.com'a gönder
+const TEST_EMAIL = 'merkezotoanahtar07@gmail.com';
 
 const SITE_NAME    = 'Merkez Oto Anahtar';
 const SITE_URL     = 'http://localhost:3000';
@@ -25,18 +27,25 @@ async function sendMail({ to, subject, html }) {
     console.log('[MAIL] Resend API key girilmemiş, mail gönderilmedi:', subject, '->', to);
     return false;
   }
+  
+  // TEST MODE: tüm mailleri kendi adresimize gönder
+  const actualTo = TEST_MODE ? TEST_EMAIL : to;
+  if (TEST_MODE) {
+    console.log(`[MAIL] TEST MODE: ${to} yerine ${TEST_EMAIL} adresine gönderiliyor`);
+  }
+  
   try {
     const { data, error } = await resend.emails.send({
       from: MAIL_FROM,
-      to: [to],
-      subject,
+      to: [actualTo],
+      subject: TEST_MODE ? `[TEST: ${to}] ${subject}` : subject,
       html
     });
     if (error) {
       console.error('[MAIL] Resend Hata:', error);
       return false;
     }
-    console.log('[MAIL] Gönderildi:', subject, '->', to, '| ID:', data.id);
+    console.log('[MAIL] Gönderildi:', subject, '->', actualTo, '| ID:', data.id);
     return true;
   } catch (e) {
     console.error('[MAIL] Hata:', e.message);
@@ -272,6 +281,9 @@ async function sendOrderDelivered(order, user, invoicePdfBuffer) {
     return false;
   }
 
+  // TEST MODE: tüm mailleri kendi adresimize gönder
+  const actualTo = TEST_MODE ? TEST_EMAIL : user.email;
+  
   try {
     const attachments = invoicePdfBuffer ? [{
       filename: `fatura-${order.orderNo}.pdf`,
@@ -280,8 +292,8 @@ async function sendOrderDelivered(order, user, invoicePdfBuffer) {
 
     const { data, error } = await resend.emails.send({
       from: MAIL_FROM,
-      to: [user.email],
-      subject: `🎉 Teslim Edildi + Fatura — ${order.orderNo}`,
+      to: [actualTo],
+      subject: TEST_MODE ? `[TEST: ${user.email}] 🎉 Teslim Edildi + Fatura — ${order.orderNo}` : `🎉 Teslim Edildi + Fatura — ${order.orderNo}`,
       html,
       attachments
     });
