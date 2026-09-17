@@ -8,6 +8,9 @@ const mailer = require('./mailer');
 const sms    = require('./sms');
 const { generateInvoice, saveInvoiceToDisk } = require('./invoice');
 const passport = require('passport');
+
+// ─── 2FA OTP AYARLARI ────────────────────────────────────────────────────────
+const ENABLE_2FA_OTP = false; // true = OTP aktif | false = devre dışı
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const db = require('./database');
 const helmet = require('helmet');
@@ -1229,7 +1232,7 @@ app.get('/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 
-// Google callback - OTP ile
+// Google callback - OTP ile veya direkt giriş
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login?error=google' }),
   async (req, res) => {
@@ -1237,24 +1240,32 @@ app.get('/auth/google/callback',
     if (req.user) {
       const email = req.user.email;
       
-      // 6 haneli OTP oluştur ve mail gönder
-      const otp = String(Math.floor(100000 + Math.random() * 900000));
-      db.saveOtp(email, otp);
-      
-      console.log('[GOOGLE-OTP] Kod oluşturuldu:', otp, 'için:', email);
-      
-      // OTP mail'i gönder (beklemeden devam et)
-      mailer.sendOtp(email, otp)
-        .then(() => console.log('[OTP] Mail basariyla gonderildi:', email))
-        .catch(err => console.error('[OTP] Mail gonderme hatasi:', err.message));
-      
-      // Kullanıcı bilgilerini session'a pending olarak kaydet
-      req.session.pendingUserId = req.user.id;
-      req.session.pendingEmail = email;
-      req.session.pendingUserName = req.user.name;
-      
-      // OTP sayfasına yönlendir
-      res.redirect('/login?google=otp&email=' + encodeURIComponent(email));
+      if (ENABLE_2FA_OTP) {
+        // 2FA aktif - OTP gönder
+        const otp = String(Math.floor(100000 + Math.random() * 900000));
+        db.saveOtp(email, otp);
+        
+        console.log('[GOOGLE-OTP] Kod oluşturuldu:', otp, 'için:', email);
+        
+        // OTP mail'i gönder (beklemeden devam et)
+        mailer.sendOtp(email, otp)
+          .then(() => console.log('[OTP] Mail basariyla gonderildi:', email))
+          .catch(err => console.error('[OTP] Mail gonderme hatasi:', err.message));
+        
+        // Kullanıcı bilgilerini session'a pending olarak kaydet
+        req.session.pendingUserId = req.user.id;
+        req.session.pendingEmail = email;
+        req.session.pendingUserName = req.user.name;
+        
+        // OTP sayfasına yönlendir
+        res.redirect('/login?google=otp&email=' + encodeURIComponent(email));
+      } else {
+        // 2FA kapalı - direkt giriş
+        console.log('[GOOGLE-LOGIN] 2FA kapalı, direkt giriş yapılıyor:', email);
+        req.session.userId = req.user.id;
+        req.session.lastActivity = Date.now();
+        res.redirect('/');
+      }
     } else {
       res.redirect('/login?error=google');
     }
@@ -1316,7 +1327,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// Giriş yap (OTP gönder)
+// Giriş yap (OTP gönder veya direkt giriş)
 app.post('/api/auth/login', (req, res) => {
   console.log('[LOGIN] Giriş denemesi:', req.body.email);
   const { email, password } = req.body;
@@ -1329,33 +1340,42 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(401).json({ error: 'E-posta veya şifre hatalı.' });
   }
   
-  // Şifre doğru — 6 haneli OTP oluştur ve mail gönder
-  const otp = String(Math.floor(100000 + Math.random() * 900000)); // 6 haneli kod
-  console.log('==========================================');
-  console.log('DOGRULAMA KODU:', otp);
-  console.log('Email:', email);
-  console.log('Gecerlilik: 10 dakika');
-  console.log('==========================================');
-  db.saveOtp(email, otp);
-  
-  // OTP mail'i gönder (beklemeden devam et)
-  mailer.sendOtp(email, otp)
-    .then(() => console.log('[OTP] Mail basariyla gonderildi:', email))
-    .catch(err => {
-      console.error('[OTP] Mail gonderme hatasi:', err.message);
-      console.error('[OTP] Mail olmadan devam edebilirsiniz - yukaridaki kodu kullanin');
+  // 2FA OTP kontrolü
+  if (ENABLE_2FA_OTP) {
+    // Şifre doğru — 6 haneli OTP oluştur ve mail gönder
+    const otp = String(Math.floor(100000 + Math.random() * 900000)); // 6 haneli kod
+    console.log('==========================================');
+    console.log('DOGRULAMA KODU:', otp);
+    console.log('Email:', email);
+    console.log('Gecerlilik: 10 dakika');
+    console.log('==========================================');
+    db.saveOtp(email, otp);
+    
+    // OTP mail'i gönder (beklemeden devam et)
+    mailer.sendOtp(email, otp)
+      .then(() => console.log('[OTP] Mail basariyla gonderildi:', email))
+      .catch(err => {
+        console.error('[OTP] Mail gonderme hatasi:', err.message);
+        console.error('[OTP] Mail olmadan devam edebilirsiniz - yukaridaki kodu kullanin');
+      });
+    
+    // Kullanıcı bilgilerini session'a pending olarak kaydet
+    req.session.pendingUserId = user.id;
+    req.session.pendingEmail = email;
+    
+    console.log('[OTP] Session güncellendi, requireOtp: true dönüyor');
+    res.json({ 
+      success: true, 
+      requireOtp: true,
+      message: 'Doğrulama kodu e-posta adresinize gönderildi. Lütfen kontrol edin.'
     });
-  
-  // Kullanıcı bilgilerini session'a pending olarak kaydet
-  req.session.pendingUserId = user.id;
-  req.session.pendingEmail = email;
-  
-  console.log('[OTP] Session güncellendi, requireOtp: true dönüyor');
-  res.json({ 
-    success: true, 
-    requireOtp: true,
-    message: 'Doğrulama kodu e-posta adresinize gönderildi. Lütfen kontrol edin.'
-  });
+  } else {
+    // 2FA kapalı - direkt giriş
+    console.log('[LOGIN] 2FA kapalı, direkt giriş yapılıyor:', email);
+    req.session.userId = user.id;
+    req.session.lastActivity = Date.now();
+    res.json({ success: true, message: 'Giriş başarılı!' });
+  }
 });
 
 // OTP doğrulama
@@ -1580,5 +1600,9 @@ app.listen(PORT, () => {
   console.log(`📦 Site:  http://localhost:${PORT}`);
   console.log(`🔧 Admin: http://localhost:${PORT}/admin`);
   console.log('👤 Kullanıcı: admin | Şifre: admin123\n');
-  console.log('🔐 2FA OTP sistemi aktif (10dk geçerlilik, 25dk session timeout)\n');
+  if (ENABLE_2FA_OTP) {
+    console.log('🔐 2FA OTP sistemi aktif (10dk geçerlilik, 25dk session timeout)\n');
+  } else {
+    console.log('⚠️  2FA OTP sistemi devre dışı - direkt giriş aktif\n');
+  }
 });
